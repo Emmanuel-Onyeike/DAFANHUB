@@ -80,11 +80,173 @@ async function sendPushNotification(title, body, url = "/dashboard.html") {
       body: JSON.stringify({ title, body, url })
     });
 
-    const data = await res.json();
-    console.log("Push result:", data);
+    const raw = await res.text();
+    let data;
+    try {
+      data = raw ? JSON.parse(raw) : null;
+    } catch {
+      console.error(`Push endpoint returned non-JSON (status ${res.status}):`, raw);
+      return { ok: false, status: res.status, raw };
+    }
+
+    if (!res.ok) {
+      console.error(`Push endpoint error (status ${res.status}):`, data);
+    } else {
+      console.log("Push result:", data);
+    }
     return data;
   } catch (err) {
     console.error("Failed to send push:", err);
+  }
+}
+
+// ===================== MATCH EVENT → NOTIFICATION COPY =====================
+// Turns a single logged event into a punchy push notification.
+function buildEventNotification(e, opponent, scoreHome, scoreAway) {
+  const min = e.minute ? `${e.minute}'` : "";
+  const player = (e.player || "").trim();
+  const detail = (e.detail || "").trim();
+  const scoreLine = `DA United ${scoreHome ?? 0} - ${scoreAway ?? 0} ${opponent || "Opponent"}`.trim();
+  const minSuffix = min ? ` ${min}` : "";
+  const detailSuffix = detail ? ` (${detail})` : "";
+
+  switch (e.type) {
+    case "Kick Off":
+      return { title: "🟢 Kick Off!", body: `${scoreLine} is underway.` };
+
+    case "Goal":
+      return {
+        title: "⚽ GOALLLLLLLLL!",
+        body: `${player || "DA United"} scores${minSuffix}${detailSuffix}! ${scoreLine}`
+      };
+
+    case "Golazo":
+      return {
+        title: "🚀 GOLAZOOO!!",
+        body: `${player || "DA United"} with an absolute screamer${minSuffix}${detailSuffix}! ${scoreLine}`
+      };
+
+    case "Own Goal":
+      return {
+        title: "😬 Own Goal",
+        body: `${player ? player + " (o.g.)" : "Own goal"}${minSuffix}${detailSuffix} — ${scoreLine}`
+      };
+
+    case "Free Kick Goal":
+      return {
+        title: "🎯 FREE KICK GOALLL!",
+        body: `${player || "DA United"} curls it in${minSuffix}! ${scoreLine}`
+      };
+
+    case "Penalty Scored":
+      return {
+        title: "✅ Penalty Scored!",
+        body: `${player || "DA United"} sends the keeper the wrong way${minSuffix}. ${scoreLine}`
+      };
+
+    case "Penalty Missed":
+      return {
+        title: "❌ Penalty Missed",
+        body: `${player || "DA United"} can't convert${minSuffix}.`
+      };
+
+    case "Possible Penalty":
+      return {
+        title: "🤔 Possible Penalty!",
+        body: `Shout for a penalty${minSuffix} — referee taking a look.`
+      };
+
+    case "Possible Free Kick":
+      return {
+        title: "👀 Possible Free Kick",
+        body: `Dangerous area${minSuffix} — foul under review.`
+      };
+
+    case "Assist":
+      return {
+        title: "🅰️ Assist",
+        body: `${player || "DA United"} with the assist${minSuffix}.`
+      };
+
+    case "Yellow Card":
+      return {
+        title: "🟨 Yellow Card",
+        body: `${player || "A player"} is booked${minSuffix}.`
+      };
+
+    case "Red Card":
+      return {
+        title: "🟥 RED CARD!",
+        body: `${player || "A player"} is sent off${minSuffix}!`
+      };
+
+    case "Substitution":
+      return {
+        title: "🔄 Substitution",
+        body: `${player ? player : "Change made"}${minSuffix}${detailSuffix}`
+      };
+
+    case "VAR Check":
+      return {
+        title: "📺 VAR Check",
+        body: `Referee reviewing the incident${minSuffix}...`
+      };
+
+    case "Goal Disallowed":
+      return {
+        title: "❌ Goal Disallowed",
+        body: `VAR rules the goal out${minSuffix}${detailSuffix}.`
+      };
+
+    case "Offside":
+      return {
+        title: "🚩 Offside",
+        body: `${player ? player + " flagged offside" : "Offside called"}${minSuffix}.`
+      };
+
+    case "Injury":
+      return {
+        title: "🩹 Injury Concern",
+        body: `${player || "A player"} down injured${minSuffix}.`
+      };
+
+    case "HT":
+      return { title: "⏸️ Half Time", body: scoreLine };
+
+    case "FT":
+      return { title: "🏁 Full Time", body: `${scoreLine} — that's full time.` };
+
+    default:
+      return {
+        title: "DA United",
+        body: `${e.type}${player ? " — " + player : ""}${minSuffix}${detailSuffix}`
+      };
+  }
+}
+
+// Turns the match status dropdown into a push notification.
+function buildStatusNotification(status, scoreHome, scoreAway, opponent) {
+  const scoreLine = `DA United ${scoreHome ?? 0} - ${scoreAway ?? 0} ${opponent || "Opponent"}`.trim();
+
+  switch (status) {
+    case "Scheduled":
+      return { title: "📅 Match Scheduled", body: `DA United vs ${opponent || "Opponent"}` };
+    case "Live":
+      return { title: "🟢 We are LIVE!", body: scoreLine };
+    case "HT":
+      return { title: "⏸️ Half Time", body: scoreLine };
+    case "FT":
+      return { title: "🏁 Full Time", body: `${scoreLine} — full time.` };
+    case "AET":
+      return { title: "⏱️ After Extra Time", body: scoreLine };
+    case "Penalties":
+      return { title: "🎯 Penalty Shootout!", body: scoreLine };
+    case "Postponed":
+      return { title: "⛔ Match Postponed", body: `DA United vs ${opponent || "Opponent"} has been postponed.` };
+    case "Cancelled":
+      return { title: "🚫 Match Cancelled", body: `DA United vs ${opponent || "Opponent"} has been cancelled.` };
+    default:
+      return { title: "Match Update", body: scoreLine };
   }
 }
 
@@ -102,7 +264,7 @@ function renderEventsPreview() {
 
   box.innerHTML = currentEvents.map((e, i) => `
     <div class="flex items-center justify-between bg-da-dark/50 rounded-lg px-3 py-1.5">
-      <span>${e.minute || "—"}' · <strong>${e.type}</strong> ${e.player ? "– " + e.player : ""}</span>
+      <span>${e.minute || "—"}' · <strong>${e.type}</strong> ${e.player ? "– " + e.player : ""} ${e.detail ? `<em class="text-da-muted">(${e.detail})</em>` : ""}</span>
       <button type="button" data-idx="${i}" class="text-red-400 text-xs remove-event">✕</button>
     </div>
   `).join("");
@@ -115,15 +277,30 @@ function renderEventsPreview() {
   });
 }
 
-document.getElementById("btn-add-event")?.addEventListener("click", () => {
+document.getElementById("btn-add-event")?.addEventListener("click", async () => {
   const type = document.getElementById("event-type").value;
   const player = document.getElementById("event-player").value.trim();
   const minute = document.getElementById("event-minute").value.trim();
+  const detailInput = document.getElementById("event-detail");
+  const detail = detailInput ? detailInput.value.trim() : "";
 
-  currentEvents.push({ type, player, minute });
+  const newEvent = { type, player, minute, detail };
+  currentEvents.push(newEvent);
+
   document.getElementById("event-player").value = "";
   document.getElementById("event-minute").value = "";
+  if (detailInput) detailInput.value = "";
   renderEventsPreview();
+
+  // Send a live push for this event right away, unless the admin unchecked it
+  const notifyCheckbox = document.getElementById("event-notify");
+  if (!notifyCheckbox || notifyCheckbox.checked) {
+    const opponent = document.getElementById("match-opponent")?.value || "";
+    const scoreHome = document.getElementById("match-score-home")?.value || 0;
+    const scoreAway = document.getElementById("match-score-away")?.value || 0;
+    const { title, body } = buildEventNotification(newEvent, opponent, scoreHome, scoreAway);
+    await sendPushNotification(title, body, "/matches.html");
+  }
 });
 
 // ===================== FIXTURES =====================
@@ -206,7 +383,6 @@ document.getElementById("btn-save-fixture")?.addEventListener("click", async () 
   } else {
     showToast(id ? "Fixture updated" : "Fixture saved");
 
-    // Send push
     await sendPushNotification(
       "New Fixture",
       `${data.home} vs ${data.away || "Opponent"}`,
@@ -250,7 +426,7 @@ async function loadMatches() {
   list.innerHTML = data.map(m => {
     const events = m.events ? (typeof m.events === "string" ? JSON.parse(m.events) : m.events) : [];
     const eventsHtml = events.length
-      ? `<div class="text-xs text-da-muted mt-1">${events.map(e => `${e.minute || ""}' ${e.type} ${e.player || ""}`).join(" · ")}</div>`
+      ? `<div class="text-xs text-da-muted mt-1">${events.map(e => `${e.minute || ""}' ${e.type} ${e.player || ""}${e.detail ? ` (${e.detail})` : ""}`).join(" · ")}</div>`
       : "";
 
     return `
@@ -301,6 +477,7 @@ document.getElementById("btn-save-match")?.addEventListener("click", async () =>
   const scoreHome = parseInt(document.getElementById("match-score-home").value) || 0;
   const scoreAway = parseInt(document.getElementById("match-score-away").value) || 0;
   const opponent = document.getElementById("match-opponent").value;
+  const status = document.getElementById("match-status").value || "FT";
 
   const data = {
     opponent,
@@ -308,10 +485,10 @@ document.getElementById("btn-save-match")?.addEventListener("click", async () =>
     score_away: scoreAway,
     venue: document.getElementById("match-venue").value,
     competition: document.getElementById("match-comp").value || "Club Friendlies",
-    status: document.getElementById("match-status").value || "FT",
+    status,
     events: currentEvents,
     scorers: currentEvents
-      .filter(e => e.type === "Goal" || e.type === "Own Goal")
+      .filter(e => e.type === "Goal" || e.type === "Own Goal" || e.type === "Golazo" || e.type === "Free Kick Goal" || e.type === "Penalty Scored")
       .map(e => `${e.player} ${e.minute}`)
       .join("\n")
   };
@@ -329,12 +506,8 @@ document.getElementById("btn-save-match")?.addEventListener("click", async () =>
   } else {
     showToast(id ? "Match updated" : "Match saved");
 
-    // Send push
-    await sendPushNotification(
-      data.status === "FT" ? "Full Time" : "Match Update",
-      `DA United ${scoreHome} - ${scoreAway} ${opponent || ""}`,
-      "/matches.html"
-    );
+    const { title, body } = buildStatusNotification(status, scoreHome, scoreAway, opponent);
+    await sendPushNotification(title, body, "/matches.html");
 
     resetMatchForm();
     loadMatches();
@@ -544,7 +717,6 @@ document.getElementById("btn-save-story")?.addEventListener("click", async () =>
   } else {
     showToast(id ? "Story updated" : "Story published");
 
-    // Send push notification
     await sendPushNotification(
       "DA United",
       title || "New story posted",
