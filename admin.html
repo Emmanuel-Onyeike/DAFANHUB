@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — DA United</title>
+
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#22c55e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="DATDHUB">
+  <link rel="apple-touch-icon" href="/assets/crest.png">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'da-green': '#22c55e',
+            'da-dark': '#050805',
+            'da-sidebar': '#0a0f0a',
+            'da-card': '#0c140c',
+            'da-border': '#1a2a1a',
+            'da-muted': '#6b7c6b',
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/css/dashboard.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body class="bg-da-dark text-white min-h-screen antialiased">
+
+  <!-- Auth Gate -->
+  <div id="auth-gate" class="fixed inset-0 z-50 bg-da-dark flex items-center justify-center p-4">
+    <div class="bg-da-card border border-da-border rounded-2xl p-8 max-w-sm w-full text-center">
+      <div class="w-14 h-14 rounded-full bg-da-green/15 flex items-center justify-center mx-auto mb-5">
+        <svg class="w-7 h-7 text-da-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+        </svg>
+      </div>
+      <h2 class="text-xl font-bold mb-2">Admin Access</h2>
+      <p class="text-da-muted text-sm mb-6">Enter the admin password</p>
+      <input type="password" id="admin-password" placeholder="Password"
+             class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-3 text-sm mb-4 focus:outline-none focus:border-da-green/50">
+      <button id="btn-login" class="w-full bg-da-green hover:bg-green-400 text-black font-semibold py-3 rounded-xl transition-colors">
+        Enter Admin
+      </button>
+      <p id="auth-error" class="text-red-400 text-xs mt-3 hidden">Wrong password</p>
+    </div>
+  </div>
+
+  <!-- Admin Dashboard -->
+  <div id="admin-dashboard" class="hidden min-h-screen">
+
+    <header class="sticky top-0 z-30 bg-da-dark/95 backdrop-blur border-b border-da-border px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full bg-white flex items-center justify-center overflow-hidden">
+          <img src="assets/crest.png" alt="DA" class="w-full h-full object-cover"
+               onerror="this.parentElement.innerHTML='<span class=\'text-xs font-black text-black\'>DA</span>'">
+        </div>
+        <div>
+          <div class="font-bold text-sm">DA UNITED</div>
+          <div class="text-[10px] text-da-green tracking-wider uppercase">Admin Panel</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="dashboard.html" class="text-sm text-da-muted hover:text-white transition-colors">View Site</a>
+        <button id="btn-logout" class="text-sm text-red-400 hover:text-red-300">Logout</button>
+      </div>
+    </header>
+
+    <div class="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
+
+      <!-- Tabs -->
+      <div class="flex flex-wrap gap-2 mb-8 border-b border-da-border pb-4">
+        <button data-tab="fixtures" class="admin-tab active px-4 py-2 rounded-full text-sm font-medium bg-da-green text-black">Fixtures</button>
+        <button data-tab="matches" class="admin-tab px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-gray-300 hover:bg-white/10">Matches</button>
+        <button data-tab="squad" class="admin-tab px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-gray-300 hover:bg-white/10">Squad</button>
+        <button data-tab="stories" class="admin-tab px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-gray-300 hover:bg-white/10">Stories</button>
+        <button data-tab="gallery" class="admin-tab px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-gray-300 hover:bg-white/10">Gallery</button>
+        <button data-tab="live" class="admin-tab px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-gray-300 hover:bg-white/10">Live</button>
+        <button data-tab="training" class="admin-tab px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-gray-300 hover:bg-white/10">Training</button>
+        <button data-tab="datv" class="admin-tab px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-gray-300 hover:bg-white/10">DA TV</button>
+        <button data-tab="predictions" class="admin-tab px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-gray-300 hover:bg-white/10">Predictions</button>
+      </div>
+
+      <!-- ===================== FIXTURES ===================== -->
+      <div id="tab-fixtures" class="admin-panel">
+        <h2 class="text-xl font-bold mb-5">Manage Fixtures</h2>
+        
+        <div class="bg-da-card border border-da-border rounded-2xl p-5 mb-6">
+          <h3 class="font-semibold mb-4" id="fixture-form-title">Add / Update Next Fixture</h3>
+          <input type="hidden" id="fixture-edit-id">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Home Team</label>
+              <input type="text" id="fix-home" value="DA United" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-da-green/50">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Away Team</label>
+              <input type="text" id="fix-away" placeholder="Opponent" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-da-green/50">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Date</label>
+              <input type="text" id="fix-date" placeholder="e.g. Sat 22 Aug" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-da-green/50">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Time</label>
+              <input type="text" id="fix-time" placeholder="e.g. 4:00 PM" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-da-green/50">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Venue</label>
+              <input type="text" id="fix-venue" placeholder="DA United Stadium" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-da-green/50">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Competition</label>
+              <input type="text" id="fix-comp" value="CLUB FRIENDLIES" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-da-green/50">
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button id="btn-save-fixture" class="bg-da-green hover:bg-green-400 text-black font-semibold px-5 py-2.5 rounded-full text-sm transition-colors">
+              Save Fixture
+            </button>
+            <button id="btn-cancel-fixture" class="hidden px-5 py-2.5 rounded-full text-sm border border-da-border hover:bg-white/5">Cancel Edit</button>
+          </div>
+        </div>
+
+        <div id="fixtures-list" class="space-y-3"></div>
+      </div>
+
+      <!-- ===================== MATCHES ===================== -->
+      <div id="tab-matches" class="admin-panel hidden">
+        <h2 class="text-xl font-bold mb-5">Manage Matches & Results</h2>
+        
+        <div class="bg-da-card border border-da-border rounded-2xl p-5 mb-6">
+          <h3 class="font-semibold mb-4" id="match-form-title">Add Match Result</h3>
+          <input type="hidden" id="match-edit-id">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Opponent</label>
+              <input type="text" id="match-opponent" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Score (DA - Opp)</label>
+              <div class="flex gap-2 items-center">
+                <input type="number" id="match-score-home" min="0" class="w-20 bg-da-dark border border-da-border rounded-xl px-3 py-2.5 text-sm text-center">
+                <span>-</span>
+                <input type="number" id="match-score-away" min="0" class="w-20 bg-da-dark border border-da-border rounded-xl px-3 py-2.5 text-sm text-center">
+              </div>
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Venue</label>
+              <select id="match-venue" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+                <option value="Home">Home</option>
+                <option value="Away">Away</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Competition</label>
+              <input type="text" id="match-comp" value="Club Friendlies" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div class="sm:col-span-2">
+              <label class="text-xs text-da-muted block mb-1">Match Status</label>
+              <select id="match-status" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+                <option value="Scheduled">Scheduled</option>
+                <option value="Live">Live</option>
+                <option value="HT">Half Time (HT)</option>
+                <option value="FT">Full Time (FT)</option>
+                <option value="AET">After Extra Time</option>
+                <option value="Penalties">Penalties</option>
+                <option value="Postponed">Postponed</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Match Events -->
+          <div class="mb-4">
+            <label class="text-xs text-da-muted block mb-2">Match Events (Goals, Cards, VAR, Offside, etc.)</label>
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-2">
+              <select id="event-type" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
+                <option value="Goal">Goal</option>
+                <option value="Own Goal">Own Goal</option>
+                <option value="Assist">Assist</option>
+                <option value="Yellow Card">Yellow Card</option>
+                <option value="Red Card">Red Card</option>
+                <option value="Substitution">Substitution</option>
+                <option value="HT">Half Time</option>
+                <option value="FT">Full Time</option>
+                <option value="VAR">VAR</option>
+                <option value="Offside">Offside</option>
+                <option value="Penalty">Penalty</option>
+                <option value="Penalty Missed">Penalty Missed</option>
+                <option value="Injury">Injury</option>
+                <option value="Other">Other</option>
+              </select>
+              <input type="text" id="event-player" placeholder="Player name" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
+              <input type="text" id="event-minute" placeholder="Min (e.g. 23')" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
+              <button type="button" id="btn-add-event" class="bg-white/10 hover:bg-white/15 rounded-xl text-sm font-medium">+ Add Event</button>
+            </div>
+            <div id="events-preview" class="space-y-1 text-sm text-da-muted min-h-[40px]"></div>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <button id="btn-save-match" class="bg-da-green hover:bg-green-400 text-black font-semibold px-5 py-2.5 rounded-full text-sm">
+              Save Match
+            </button>
+            <button id="btn-cancel-match" class="hidden px-5 py-2.5 rounded-full text-sm border border-da-border hover:bg-white/5">Cancel Edit</button>
+          </div>
+        </div>
+
+        <div id="matches-list" class="space-y-3"></div>
+      </div>
+
+      <!-- ===================== SQUAD ===================== -->
+      <div id="tab-squad" class="admin-panel hidden">
+        <h2 class="text-xl font-bold mb-5">Manage Squad</h2>
+        
+        <div class="bg-da-card border border-da-border rounded-2xl p-5 mb-6">
+          <h3 class="font-semibold mb-4" id="player-form-title">Add Player</h3>
+          <input type="hidden" id="player-edit-id">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Full Name</label>
+              <input type="text" id="player-name" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Position</label>
+              <select id="player-position" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+                <option value="GK">GK</option>
+                <option value="DEF">DEF</option>
+                <option value="MID">MID</option>
+                <option value="FWD">FWD</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Role</label>
+              <input type="text" id="player-role" placeholder="Captain, First-choice GK..." class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Photo</label>
+              <input type="file" id="player-photo" accept="image/*" class="w-full text-sm text-da-muted file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-da-green file:text-black file:font-medium">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Apps</label>
+              <input type="number" id="player-apps" value="0" min="0" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Goals</label>
+              <input type="number" id="player-goals" value="0" min="0" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Assists</label>
+              <input type="number" id="player-assists" value="0" min="0" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button id="btn-save-player" class="bg-da-green hover:bg-green-400 text-black font-semibold px-5 py-2.5 rounded-full text-sm">Save Player</button>
+            <button id="btn-cancel-player" class="hidden px-5 py-2.5 rounded-full text-sm border border-da-border hover:bg-white/5">Cancel Edit</button>
+          </div>
+        </div>
+
+        <div id="players-list" class="space-y-3"></div>
+      </div>
+
+      <!-- ===================== STORIES ===================== -->
+      <div id="tab-stories" class="admin-panel hidden">
+        <h2 class="text-xl font-bold mb-5">Manage Stories</h2>
+        
+        <div class="bg-da-card border border-da-border rounded-2xl p-5 mb-6">
+          <h3 class="font-semibold mb-4" id="story-form-title">Post New Story</h3>
+          <input type="hidden" id="story-edit-id">
+          <div class="space-y-4 mb-4">
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Category</label>
+              <select id="story-category" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+                <option value="Club">Club</option>
+                <option value="Injury">Injury</option>
+                <option value="Transfer">Transfer</option>
+                <option value="Loan">Loan</option>
+                <option value="Suspension">Suspension</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Title</label>
+              <input type="text" id="story-title" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Short Description</label>
+              <input type="text" id="story-desc" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Full Content</label>
+              <textarea id="story-content" rows="5" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm"></textarea>
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Image</label>
+              <input type="file" id="story-image" accept="image/*" class="w-full text-sm text-da-muted file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-da-green file:text-black file:font-medium">
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button id="btn-save-story" class="bg-da-green hover:bg-green-400 text-black font-semibold px-5 py-2.5 rounded-full text-sm">Publish Story</button>
+            <button id="btn-cancel-story" class="hidden px-5 py-2.5 rounded-full text-sm border border-da-border hover:bg-white/5">Cancel Edit</button>
+          </div>
+        </div>
+
+        <div id="stories-list" class="space-y-3"></div>
+      </div>
+
+      <!-- ===================== GALLERY ===================== -->
+      <div id="tab-gallery" class="admin-panel hidden">
+        <h2 class="text-xl font-bold mb-5">Manage Gallery</h2>
+        
+        <div class="bg-da-card border border-da-border rounded-2xl p-5 mb-6">
+          <h3 class="font-semibold mb-4">Upload Image</h3>
+          <div class="space-y-4 mb-4">
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Title</label>
+              <input type="text" id="gallery-title" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Description</label>
+              <input type="text" id="gallery-desc" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Image</label>
+              <input type="file" id="gallery-image" accept="image/*" class="w-full text-sm text-da-muted file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-da-green file:text-black file:font-medium">
+            </div>
+          </div>
+          <button id="btn-save-gallery" class="bg-da-green hover:bg-green-400 text-black font-semibold px-5 py-2.5 rounded-full text-sm">
+            Upload to Gallery
+          </button>
+        </div>
+
+        <div id="gallery-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+
+      <!-- ===================== LIVE ===================== -->
+      <div id="tab-live" class="admin-panel hidden">
+        <h2 class="text-xl font-bold mb-5">Live Stream Control</h2>
+        
+        <div class="bg-da-card border border-da-border rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-5">
+            <div>
+              <h3 class="font-semibold">Live Stream Status</h3>
+              <p class="text-xs text-da-muted mt-0.5">Turn on to show live player on the Live page</p>
+            </div>
+            <button id="toggle-live" class="relative w-12 h-7 rounded-full bg-gray-600 transition-colors">
+              <span class="absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform"></span>
+            </button>
+          </div>
+          <div class="space-y-4">
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Match Title</label>
+              <input type="text" id="live-title" placeholder="DA United vs Opponent" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Stream URL (YouTube / custom)</label>
+              <input type="text" id="live-url" placeholder="https://..." class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+          </div>
+          <button id="btn-save-live" class="mt-5 bg-da-green hover:bg-green-400 text-black font-semibold px-5 py-2.5 rounded-full text-sm">
+            Save Live Settings
+          </button>
+        </div>
+      </div>
+
+      <!-- ===================== TRAINING ===================== -->
+      <div id="tab-training" class="admin-panel hidden">
+        <h2 class="text-xl font-bold mb-5">Manage Training Sessions</h2>
+        
+        <div class="bg-da-card border border-da-border rounded-2xl p-5 mb-6">
+          <h3 class="font-semibold mb-4" id="training-form-title">Add Training Session</h3>
+          <input type="hidden" id="training-edit-id">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Session Title</label>
+              <input type="text" id="training-title" placeholder="e.g. Long range balls" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Type</label>
+              <select id="training-type" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+                <option value="Technical">Technical</option>
+                <option value="Tactical">Tactical</option>
+                <option value="Fitness">Fitness</option>
+                <option value="Recovery">Recovery</option>
+                <option value="Final Prep">Final Prep</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Location</label>
+              <input type="text" id="training-location" value="DA United Training Ground" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Status</label>
+              <select id="training-status" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+                <option value="closed">Closed session</option>
+                <option value="open">Open for media</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button id="btn-save-training" class="bg-da-green hover:bg-green-400 text-black font-semibold px-5 py-2.5 rounded-full text-sm">Save Session</button>
+            <button id="btn-cancel-training" class="hidden px-5 py-2.5 rounded-full text-sm border border-da-border hover:bg-white/5">Cancel Edit</button>
+          </div>
+        </div>
+
+        <div id="training-list" class="space-y-3"></div>
+      </div>
+
+      <!-- ===================== DA TV ===================== -->
+      <div id="tab-datv" class="admin-panel hidden">
+        <h2 class="text-xl font-bold mb-5">Manage DA TV</h2>
+        
+        <div class="bg-da-card border border-da-border rounded-2xl p-5 mb-6">
+          <h3 class="font-semibold mb-4">Upload Video / Film</h3>
+          <div class="space-y-4 mb-4">
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Title</label>
+              <input type="text" id="datv-title" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Description</label>
+              <input type="text" id="datv-desc" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Video / Thumbnail</label>
+              <input type="file" id="datv-file" accept="video/*,image/*" class="w-full text-sm text-da-muted file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-da-green file:text-black file:font-medium">
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="checkbox" id="datv-featured" class="w-4 h-4">
+              <label for="datv-featured" class="text-sm">Set as Featured Film</label>
+            </div>
+          </div>
+          <button id="btn-save-datv" class="bg-da-green hover:bg-green-400 text-black font-semibold px-5 py-2.5 rounded-full text-sm">
+            Upload to DA TV
+          </button>
+        </div>
+
+        <div id="datv-list" class="space-y-3"></div>
+      </div>
+
+      <!-- ===================== PREDICTIONS ===================== -->
+      <div id="tab-predictions" class="admin-panel hidden">
+        <h2 class="text-xl font-bold mb-5">Predictions Control</h2>
+        
+        <div class="bg-da-card border border-da-border rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-5">
+            <div>
+              <h3 class="font-semibold">Open Fixture for Predictions</h3>
+              <p class="text-xs text-da-muted mt-0.5">When turned on, supporters can lock in predictions</p>
+            </div>
+            <button id="toggle-predictions" class="relative w-12 h-7 rounded-full bg-gray-600 transition-colors">
+              <span class="absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform"></span>
+            </button>
+          </div>
+          <div>
+            <label class="text-xs text-da-muted block mb-1">Match Title for Predictions</label>
+            <input type="text" id="pred-match" placeholder="DA United vs Opponent" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+          </div>
+          <button id="btn-save-predictions" class="mt-5 bg-da-green hover:bg-green-400 text-black font-semibold px-5 py-2.5 rounded-full text-sm">
+            Save Predictions Settings
+          </button>
+        </div>
+      </div>
+
+      <!-- Toast -->
+      <div id="admin-toast" class="fixed bottom-6 right-6 bg-da-green text-black font-semibold px-5 py-3 rounded-full shadow-lg hidden z-50">
+        Saved successfully
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase.js"></script>
+  <script src="/js/admin.js"></script>
+  <script src="/js/common.js"></script>
+</body>
+</html>

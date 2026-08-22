@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DA United — Official Club Platform</title>
+  <!-- PWA -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#22c55e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DATDHUB">
+<link rel="apple-touch-icon" href="/assets/crest.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'da-green': '#22c55e',
+            'da-green-dark': '#16a34a',
+            'da-dark': '#050805',
+            'da-card': '#0b120b',
+            'da-border': '#1a2a1a',
+            'da-muted': '#6b7c6b',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          boxShadow: {
+            'green-glow': '0 0 40px -10px rgba(34, 197, 94, 0.35)',
+            'card': '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body class="bg-da-dark text-white min-h-screen overflow-x-hidden antialiased">
+
+  <!-- Subtle grid + gradient overlay -->
+  <div class="fixed inset-0 grid-bg pointer-events-none"></div>
+  <div class="fixed inset-0 bg-gradient-to-b from-transparent via-transparent to-da-dark/80 pointer-events-none"></div>
+
+  <!-- ================= HEADER ================= -->
+  <header class="relative z-30 flex items-center justify-between px-5 sm:px-8 lg:px-14 py-5">
+    <div class="flex items-center gap-3.5">
+      <!-- Small logo -->
+      <div class="w-11 h-11 rounded-full bg-white flex items-center justify-center overflow-hidden shadow-md">
+        <img src="/assets/crest.PNG" alt="DA United Crest" class="w-full h-full object-cover" 
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+        <!-- Fallback if image not found -->
+        <div class="hidden w-full h-full items-center justify-center text-[10px] font-black text-black">DA</div>
+      </div>
+      <div>
+        <div class="font-bold text-[17px] tracking-wide leading-none">DA UNITED</div>
+        <div class="text-[10px] tracking-[0.18em] text-da-green uppercase mt-1 font-medium">One Team · One Dream</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= MAIN ================= -->
+  <main class="relative z-10 max-w-6xl mx-auto px-5 sm:px-8 lg:px-14 pt-10 sm:pt-16 lg:pt-20 pb-36">
+    <div class="flex flex-col lg:flex-row items-center lg:items-center gap-14 lg:gap-20">
+
+      <!-- LEFT CONTENT -->
+      <div class="flex-1 max-w-xl text-center lg:text-left">
+        <!-- Badge -->
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-da-green/30 bg-da-green/10 text-da-green text-[11px] font-semibold tracking-wider mb-8">
+          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 2L3 7v11h4v-6h6v6h4V7l-7-5z"/>
+          </svg>
+          OFFICIAL CLUB PLATFORM
+        </div>
+
+        <!-- Headline -->
+        <h1 class="text-5xl sm:text-6xl lg:text-[4.25rem] font-extrabold leading-[1.08] tracking-tight mb-7">
+          One team.<br />
+          <span class="text-da-green">One dream.</span><br />
+          One strength.
+        </h1>
+
+        <!-- Description -->
+        <p class="text-da-muted text-[15px] sm:text-base leading-relaxed mb-10 max-w-md mx-auto lg:mx-0">
+          The official digital home of DA United. Follow the squad, live every match, read the stories, and stay close to the club wherever you are.
+        </p>
+
+        <!-- Dashboard Button -->
+        <a href="dashboard.html" 
+           class="group inline-flex items-center gap-2.5 bg-da-green hover:bg-green-400 text-black font-semibold px-8 py-3.5 rounded-full transition-all duration-300 shadow-green-glow hover:shadow-[0_0_50px_-8px_rgba(34,197,94,0.5)] hover:-translate-y-0.5">
+          Dashboard
+          <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+          </svg>
+        </a>
+      </div>
+
+      <!-- RIGHT CARD -->
+      <div class="w-full max-w-[340px] shrink-0">
+        <div class="relative bg-da-card border border-da-border rounded-3xl p-6 shadow-card overflow-hidden">
+          <!-- Soft green glow inside card -->
+          <div class="absolute -top-20 -right-20 w-48 h-48 bg-da-green/10 rounded-full blur-3xl pointer-events-none"></div>
+
+          <!-- Top label -->
+          <div class="relative flex items-center justify-between mb-6">
+            <span class="text-[10px] tracking-[0.2em] text-da-muted uppercase font-medium">The Crest Means More</span>
+            <svg class="w-5 h-5 text-da-green" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2L9 8H3l4.5 4.5L5 21l7-4.5L19 21l-2.5-8.5L21 8h-6L12 2z"/>
+            </svg>
+          </div>
+
+          <!-- CREST IMAGE – put your image in assets/crest.png -->
+          <div class="relative bg-white rounded-2xl p-5 mb-6 flex items-center justify-center aspect-square">
+            <img 
+              src="/assets/crest.PNG" 
+              alt="DA United Official Crest" 
+              class="w-full h-full object-contain max-h-[220px]"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
+            />
+            <!-- Fallback if image is missing -->
+            <div class="hidden w-full h-full flex-col items-center justify-center text-black">
+              <div class="text-5xl font-black tracking-tighter">DA</div>
+              <div class="text-xs font-semibold tracking-widest mt-1">UNITED FC</div>
+            </div>
+          </div>
+
+          <!-- Club info -->
+          <div class="relative">
+            <h2 class="text-2xl font-bold mb-1 tracking-tight">DA United</h2>
+            <p class="text-da-muted text-sm mb-5">Built for the people who believe.</p>
+
+            <div class="h-px bg-da-border mb-4"></div>
+
+            <div class="flex items-center justify-end">
+              <span class="text-da-green text-xs font-semibold tracking-widest">DA / 01</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="fixed bottom-0 left-0 right-0 z-30 border-t border-da-border/50 bg-da-dark/85 backdrop-blur-md">
+    <div class="max-w-6xl mx-auto px-5 sm:px-8 lg:px-14 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
+      <div class="text-da-muted text-[13px]">Powered By Tech Nxxt Company</div>
+      <div class="flex items-center gap-5">
+        <span class="tracking-[0.2em] text-[10px] uppercase text-da-muted font-medium">Made for Matchday</span>
+        
+        <!-- DA Assist Button -->
+        <button id="da-assist-btn" 
+                class="group inline-flex items-center gap-2 bg-da-green hover:bg-green-400 text-black font-semibold px-4 py-2 rounded-full text-sm transition-all duration-300 shadow-lg shadow-da-green/20 hover:shadow-da-green/40">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+          </svg>
+          DA Assist
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ================= DA ASSIST MODAL ================= -->
+  <div id="da-assist-modal" class="fixed inset-0 z-50 hidden">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black/75 backdrop-blur-sm" id="modal-backdrop"></div>
+
+    <!-- Modal panel -->
+    <div class="absolute bottom-5 right-5 sm:bottom-6 sm:right-6 w-[calc(100%-2.5rem)] max-w-md">
+      <div class="bg-da-card border border-da-border rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[75vh]">
+        
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between px-5 py-4 border-b border-da-border bg-[#0d160d]">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full bg-da-green/15 flex items-center justify-center">
+              <svg class="w-5 h-5 text-da-green" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+              </svg>
+            </div>
+            <div>
+              <div class="font-semibold text-sm">DA Assist</div>
+              <div class="text-[11px] text-da-green font-medium">Official Club AI</div>
+            </div>
+          </div>
+          <button id="close-modal" class="text-da-muted hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Chat messages -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 min-h-[260px] max-h-[360px]">
+          <!-- Welcome message -->
+          <div class="flex gap-3">
+            <div class="w-7 h-7 rounded-full bg-da-green/15 flex-shrink-0 flex items-center justify-center mt-0.5">
+              <span class="text-da-green text-[10px] font-bold">DA</span>
+            </div>
+            <div class="bg-[#152015] border border-da-border/60 rounded-2xl rounded-tl-md px-4 py-2.5 text-sm text-gray-200 max-w-[85%] leading-relaxed">
+              Hello! I'm DA Assist — the official AI of DA United. Ask me anything about the club, the squad, or our story.
+            </div>
+          </div>
+        </div>
+
+        <!-- Input area -->
+        <div class="p-4 border-t border-da-border bg-[#0d160d]">
+          <form id="chat-form" class="flex gap-2.5">
+            <input
+              type="text"
+              id="chat-input"
+              placeholder="Ask about DA United..."
+              class="flex-1 bg-da-dark border border-da-border rounded-full px-4 py-2.5 text-sm text-white placeholder-da-muted focus:outline-none focus:border-da-green/50 focus:ring-1 focus:ring-da-green/30 transition-all"
+              autocomplete="off"
+            />
+            <button type="submit" 
+                    class="bg-da-green hover:bg-green-400 text-black rounded-full w-10 h-10 flex items-center justify-center transition-all duration-200 flex-shrink-0 hover:scale-105 active:scale-95">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+              </svg>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/main.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/supabase.js"></script>
+</body>
+</html>
