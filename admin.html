@@ -135,7 +135,7 @@
       <!-- ===================== MATCHES ===================== -->
       <div id="tab-matches" class="admin-panel hidden">
         <h2 class="text-xl font-bold mb-5">Manage Matches & Results</h2>
-        
+
         <div class="bg-da-card border border-da-border rounded-2xl p-5 mb-6">
           <h3 class="font-semibold mb-4" id="match-form-title">Add Match Result</h3>
           <input type="hidden" id="match-edit-id">
@@ -172,16 +172,21 @@
                 <option value="FT">Full Time (FT)</option>
                 <option value="AET">After Extra Time</option>
                 <option value="Penalties">Penalties</option>
-                <option value="Postponed">Postponed</option>
+                <option value="Postponed">Interrupted / Postponed</option>
                 <option value="Cancelled">Cancelled</option>
               </select>
+              <p class="text-[11px] text-da-muted mt-1">
+                Setting this to <strong>Live</strong> and saving puts the match on the Pulse dashboard as "WE ARE LIVE."
+                It stays that way — even as you log goals/cards below — until you change this back to Half Time, Full Time,
+                Interrupted or Cancelled and hit Save Match again.
+              </p>
             </div>
           </div>
 
           <!-- Match Events -->
-          <div class="mb-4">
-            <label class="text-xs text-da-muted block mb-2">Match Events (Goals, Cards, VAR, Offside, etc.)</label>
-            <div class="grid grid-cols-1 sm:grid-cols-5 gap-2 mb-2">
+          <div class="mb-4 border-t border-da-border pt-4">
+            <label class="text-xs text-da-muted block mb-2">Log a Match Event (goals, cards, VAR, etc.) — sent instantly</label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
               <select id="event-type" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
                 <option value="Kick Off">🟢 Kick Off</option>
                 <option value="Goal">⚽ Goal</option>
@@ -204,19 +209,33 @@
                 <option value="FT">🏁 Full Time</option>
                 <option value="Other">Other</option>
               </select>
+              <select id="event-side" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
+                <option value="DA United">For DA United</option>
+                <option value="Opponent">For Opponent</option>
+              </select>
               <input type="text" id="event-player" placeholder="Player name" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
               <input type="text" id="event-minute" placeholder="Min (e.g. 23)" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
               <input type="text" id="event-detail" placeholder="How? (optional)" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
               <button type="button" id="btn-add-event" class="bg-white/10 hover:bg-white/15 rounded-xl text-sm font-medium">+ Add Event</button>
             </div>
-            <label class="flex items-center gap-2 text-xs text-da-muted mb-2">
+            <label class="flex items-center gap-2 text-xs text-da-muted mb-3">
               <input type="checkbox" id="event-notify" checked class="w-4 h-4 accent-da-green">
               Push notification instantly when this event is added
             </label>
-            <div id="events-preview" class="space-y-1 text-sm text-da-muted min-h-[40px]"></div>
+            <div id="events-preview" class="space-y-1 text-sm text-da-muted min-h-[40px] mb-4"></div>
+
+            <label class="text-xs text-da-muted block mb-2">Or type a custom live update (e.g. "A stunning free kick")</label>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <input type="text" id="custom-update-text" placeholder="Type a custom update..." class="flex-1 bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
+              <button type="button" id="btn-push-custom" class="bg-da-green hover:bg-green-400 text-black font-semibold px-4 py-2 rounded-xl text-sm">
+                📢 Push Custom Update
+              </button>
+            </div>
           </div>
 
-          <div class="flex flex-wrap gap-2">
+          <div class="flex flex-wrap gap-2 border-t border-da-border pt-4">
             <button id="btn-save-match" class="bg-da-green hover:bg-green-400 text-black font-semibold px-5 py-2.5 rounded-full text-sm">
               Save Match
             </button>
