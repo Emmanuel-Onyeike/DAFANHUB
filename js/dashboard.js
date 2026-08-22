@@ -20,6 +20,36 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
+// ===== REGISTER SERVICE WORKER =====
+// This MUST run before subscribeUserToPush() is ever called, otherwise
+// navigator.serviceWorker.ready will hang forever with no error.
+let swRegistrationPromise = null;
+
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) {
+    console.warn('Service workers not supported in this browser');
+    return Promise.resolve(null);
+  }
+
+  if (!swRegistrationPromise) {
+    swRegistrationPromise = navigator.serviceWorker
+      .register('/sw.js')
+      .then((reg) => {
+        console.log('Service worker registered:', reg.scope);
+        return reg;
+      })
+      .catch((err) => {
+        console.error('Service worker registration failed:', err);
+        return null;
+      });
+  }
+
+  return swRegistrationPromise;
+}
+
+// Register immediately on script load
+registerServiceWorker();
+
 // ----- Date & Greeting -----
 function updateDateAndGreeting() {
   const dateEl = document.getElementById("current-date");
@@ -75,6 +105,13 @@ const btnDeny = document.getElementById("btn-deny-notifications");
 
 async function subscribeUserToPush() {
   try {
+    // Make sure the service worker is registered and active before using it
+    const reg = await registerServiceWorker();
+    if (!reg) {
+      console.error("Cannot subscribe to push: service worker registration failed");
+      return;
+    }
+
     const registration = await navigator.serviceWorker.ready;
 
     // Check if already subscribed
@@ -91,16 +128,24 @@ async function subscribeUserToPush() {
 
     // Save to Supabase
     if (window.supabaseClient) {
-      await window.supabaseClient.from("push_subscriptions").upsert({
+      const { error } = await window.supabaseClient.from("push_subscriptions").upsert({
         endpoint: sub.endpoint,
         p256dh: sub.keys.p256dh,
         auth: sub.keys.auth
       }, { onConflict: "endpoint" });
+
+      if (error) {
+        console.error("Failed to save push subscription to Supabase:", error);
+        return;
+      }
+    } else {
+      console.error("Cannot save push subscription: window.supabaseClient not available");
+      return;
     }
 
     console.log("Push subscription saved");
   } catch (err) {
-    console.log("Push subscription error:", err);
+    console.error("Push subscription error:", err);
   }
 }
 
@@ -144,6 +189,14 @@ if (btnDeny) {
 
 // Show the modal only once (after a short delay)
 setTimeout(showNotificationModal, 1200);
+
+// If the user already granted permission previously (e.g. reinstalled the
+// PWA, or cleared da_notifications_asked but browser permission persisted),
+// make sure we still have a live subscription saved.
+if ("Notification" in window && Notification.permission === "granted" &&
+    localStorage.getItem("da_notifications_enabled") === "true") {
+  subscribeUserToPush();
+}
 
 // ===== LOAD DATA FROM SUPABASE =====
 
