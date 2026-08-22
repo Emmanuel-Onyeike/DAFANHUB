@@ -181,27 +181,38 @@
           <!-- Match Events -->
           <div class="mb-4">
             <label class="text-xs text-da-muted block mb-2">Match Events (Goals, Cards, VAR, Offside, etc.)</label>
-            <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-2">
+            <div class="grid grid-cols-1 sm:grid-cols-5 gap-2 mb-2">
               <select id="event-type" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
-                <option value="Goal">Goal</option>
-                <option value="Own Goal">Own Goal</option>
-                <option value="Assist">Assist</option>
-                <option value="Yellow Card">Yellow Card</option>
-                <option value="Red Card">Red Card</option>
-                <option value="Substitution">Substitution</option>
-                <option value="HT">Half Time</option>
-                <option value="FT">Full Time</option>
-                <option value="VAR">VAR</option>
-                <option value="Offside">Offside</option>
-                <option value="Penalty">Penalty</option>
-                <option value="Penalty Missed">Penalty Missed</option>
-                <option value="Injury">Injury</option>
+                <option value="Kick Off">🟢 Kick Off</option>
+                <option value="Goal">⚽ Goal</option>
+                <option value="Golazo">🚀 Screamer / Golazo</option>
+                <option value="Own Goal">😬 Own Goal</option>
+                <option value="Free Kick Goal">🎯 Free Kick Goal</option>
+                <option value="Penalty Scored">✅ Penalty Scored</option>
+                <option value="Penalty Missed">❌ Penalty Missed</option>
+                <option value="Possible Penalty">🤔 Possible Penalty</option>
+                <option value="Possible Free Kick">👀 Possible Free Kick</option>
+                <option value="Assist">🅰️ Assist</option>
+                <option value="Yellow Card">🟨 Yellow Card</option>
+                <option value="Red Card">🟥 Red Card</option>
+                <option value="Substitution">🔄 Substitution</option>
+                <option value="VAR Check">📺 VAR Check</option>
+                <option value="Goal Disallowed">❌ Goal Disallowed (VAR)</option>
+                <option value="Offside">🚩 Offside</option>
+                <option value="Injury">🩹 Injury</option>
+                <option value="HT">⏸️ Half Time</option>
+                <option value="FT">🏁 Full Time</option>
                 <option value="Other">Other</option>
               </select>
               <input type="text" id="event-player" placeholder="Player name" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
-              <input type="text" id="event-minute" placeholder="Min (e.g. 23')" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
+              <input type="text" id="event-minute" placeholder="Min (e.g. 23)" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
+              <input type="text" id="event-detail" placeholder="How? (optional)" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
               <button type="button" id="btn-add-event" class="bg-white/10 hover:bg-white/15 rounded-xl text-sm font-medium">+ Add Event</button>
             </div>
+            <label class="flex items-center gap-2 text-xs text-da-muted mb-2">
+              <input type="checkbox" id="event-notify" checked class="w-4 h-4 accent-da-green">
+              Push notification instantly when this event is added
+            </label>
             <div id="events-preview" class="space-y-1 text-sm text-da-muted min-h-[40px]"></div>
           </div>
 
