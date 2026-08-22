@@ -6,7 +6,7 @@ const urlsToCache = [
   '/dashboard.html',
   '/css/dashboard.css',
   '/assets/crest.png',
-
+  '/js/common.js',
   '/js/supabase.js',
   '/js/dashboard.js'
 ];

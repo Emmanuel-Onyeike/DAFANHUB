@@ -1,38 +1,38 @@
 {
-  "name": "DATDHUB",
-  "short_name": "DATDHUB",
-  "description": "Official DA United Supporter Hub",
-  "start_url": "/dashboard.html",
-  "scope": "/",
-  "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#050805",
-  "theme_color": "#22c55e",
-  "lang": "en",
-  "icons": [
-    {
-      "src": "/assets/crest.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/assets/crest.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/assets/crest.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/assets/crest.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
-  ]
-}
+    "name": "DATDHUB",
+    "short_name": "DATDHUB",
+    "description": "Official DA United Supporter Hub",
+    "start_url": "/dashboard.html",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "background_color": "#050805",
+    "theme_color": "#22c55e",
+    "lang": "en",
+    "icons": [
+      {
+        "src": "/assets/crest.png",
+        "sizes": "192x192",
+        "type": "image/png",
+        "purpose": "any"
+      },
+      {
+        "src": "/assets/crest.png",
+        "sizes": "512x512",
+        "type": "image/png",
+        "purpose": "any"
+      },
+      {
+        "src": "/assets/crest.png",
+        "sizes": "192x192",
+        "type": "image/png",
+        "purpose": "maskable"
+      },
+      {
+        "src": "/assets/crest.png",
+        "sizes": "512x512",
+        "type": "image/png",
+        "purpose": "maskable"
+      }
+    ]
+  }
