@@ -1,0 +1,105 @@
+/* ================================
+   DA United – Landing Page Styles
+   Premium dark theme
+================================ */
+
+/* Grid background */
+.grid-bg {
+    background-image: 
+      linear-gradient(rgba(34, 197, 94, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(34, 197, 94, 0.035) 1px, transparent 1px);
+    background-size: 56px 56px;
+    background-position: center center;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 20%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 20%, transparent 100%);
+  }
+  
+  /* Smooth scrollbar for chat */
+  #chat-messages::-webkit-scrollbar {
+    width: 5px;
+  }
+  
+  #chat-messages::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  #chat-messages::-webkit-scrollbar-thumb {
+    background: #1f2f1f;
+    border-radius: 10px;
+  }
+  
+  #chat-messages::-webkit-scrollbar-thumb:hover {
+    background: #22c55e66;
+  }
+  
+  /* Typing indicator */
+  .typing-dot {
+    animation: typingBounce 1.4s infinite ease-in-out both;
+  }
+  
+  .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+  .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+  
+  @keyframes typingBounce {
+    0%, 80%, 100% { 
+      transform: scale(0.55); 
+      opacity: 0.35; 
+    }
+    40% { 
+      transform: scale(1); 
+      opacity: 1; 
+    }
+  }
+  
+  /* Modal slide-up animation */
+  #da-assist-modal:not(.hidden) .absolute.bottom-5,
+  #da-assist-modal:not(.hidden) .absolute.bottom-6 {
+    animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(24px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  
+  /* Subtle entrance for main content */
+  main {
+    animation: fadeIn 0.6s ease-out;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Card hover polish */
+  .shadow-card {
+    transition: transform 0.35s ease, box-shadow 0.35s ease;
+  }
+  
+  .shadow-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.7), 0 0 40px -10px rgba(34, 197, 94, 0.15);
+  }
+  
+  /* Better focus states */
+  input:focus {
+    outline: none;
+  }
+  
+  /* Prevent body scroll when modal is open */
+  body.modal-open {
+    overflow: hidden;
+  }

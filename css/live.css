@@ -1,0 +1,23 @@
+/* ================================
+   DA United – Live Page Styles
+================================ */
+
+/* Better chat scrollbar */
+#chat-messages::-webkit-scrollbar {
+    width: 4px;
+  }
+  #chat-messages::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  #chat-messages::-webkit-scrollbar-thumb {
+    background: #1a2a1a;
+    border-radius: 4px;
+  }
+  
+  /* Landscape optimization for mobile */
+  @media screen and (orientation: landscape) and (max-height: 500px) {
+    #player-container {
+      aspect-ratio: auto;
+      height: calc(100vh - 120px);
+    }
+  }
