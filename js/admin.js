@@ -1,5 +1,5 @@
 // ======================
-// DA United – Admin Panel (Full CRUD + Match Events)
+// DA United – Admin Panel (Full CRUD + Match Events + Push)
 // ======================
 
 const ADMIN_PASSWORD = "123789";
@@ -71,16 +71,35 @@ function fileToBase64(file) {
   });
 }
 
-// ===================== MATCH EVENTS (temporary in memory) =====================
+// ===== SEND PUSH NOTIFICATION =====
+async function sendPushNotification(title, body, url = "/dashboard.html") {
+  try {
+    const res = await fetch("/api/send-notification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, body, url })
+    });
+
+    const data = await res.json();
+    console.log("Push result:", data);
+    return data;
+  } catch (err) {
+    console.error("Failed to send push:", err);
+  }
+}
+
+// ===================== MATCH EVENTS =====================
 let currentEvents = [];
 
 function renderEventsPreview() {
   const box = document.getElementById("events-preview");
   if (!box) return;
+
   if (currentEvents.length === 0) {
     box.innerHTML = `<span class="text-da-muted text-xs">No events added yet</span>`;
     return;
   }
+
   box.innerHTML = currentEvents.map((e, i) => `
     <div class="flex items-center justify-between bg-da-dark/50 rounded-lg px-3 py-1.5">
       <span>${e.minute || "—"}' · <strong>${e.type}</strong> ${e.player ? "– " + e.player : ""}</span>
@@ -186,6 +205,14 @@ document.getElementById("btn-save-fixture")?.addEventListener("click", async () 
     alert("Error saving fixture");
   } else {
     showToast(id ? "Fixture updated" : "Fixture saved");
+
+    // Send push
+    await sendPushNotification(
+      "New Fixture",
+      `${data.home} vs ${data.away || "Opponent"}`,
+      "/fixtures.html"
+    );
+
     resetFixtureForm();
     loadFixtures();
   }
@@ -271,16 +298,22 @@ async function loadMatches() {
 
 document.getElementById("btn-save-match")?.addEventListener("click", async () => {
   const id = document.getElementById("match-edit-id").value;
+  const scoreHome = parseInt(document.getElementById("match-score-home").value) || 0;
+  const scoreAway = parseInt(document.getElementById("match-score-away").value) || 0;
+  const opponent = document.getElementById("match-opponent").value;
+
   const data = {
-    opponent: document.getElementById("match-opponent").value,
-    score_home: parseInt(document.getElementById("match-score-home").value) || 0,
-    score_away: parseInt(document.getElementById("match-score-away").value) || 0,
+    opponent,
+    score_home: scoreHome,
+    score_away: scoreAway,
     venue: document.getElementById("match-venue").value,
     competition: document.getElementById("match-comp").value || "Club Friendlies",
     status: document.getElementById("match-status").value || "FT",
     events: currentEvents,
-    scorers: currentEvents.filter(e => e.type === "Goal" || e.type === "Own Goal")
-      .map(e => `${e.player} ${e.minute}`).join("\n")
+    scorers: currentEvents
+      .filter(e => e.type === "Goal" || e.type === "Own Goal")
+      .map(e => `${e.player} ${e.minute}`)
+      .join("\n")
   };
 
   let error;
@@ -295,6 +328,14 @@ document.getElementById("btn-save-match")?.addEventListener("click", async () =>
     alert("Error saving match");
   } else {
     showToast(id ? "Match updated" : "Match saved");
+
+    // Send push
+    await sendPushNotification(
+      data.status === "FT" ? "Full Time" : "Match Update",
+      `DA United ${scoreHome} - ${scoreAway} ${opponent || ""}`,
+      "/matches.html"
+    );
+
     resetMatchForm();
     loadMatches();
   }
@@ -480,9 +521,11 @@ document.getElementById("btn-save-story")?.addEventListener("click", async () =>
   let image = null;
   if (fileInput.files[0]) image = await fileToBase64(fileInput.files[0]);
 
+  const title = document.getElementById("story-title").value;
+
   const data = {
     category: document.getElementById("story-category").value,
-    title: document.getElementById("story-title").value,
+    title,
     description: document.getElementById("story-desc").value,
     content: document.getElementById("story-content").value
   };
@@ -500,6 +543,14 @@ document.getElementById("btn-save-story")?.addEventListener("click", async () =>
     alert("Error saving story");
   } else {
     showToast(id ? "Story updated" : "Story published");
+
+    // Send push notification
+    await sendPushNotification(
+      "DA United",
+      title || "New story posted",
+      "/stories.html"
+    );
+
     resetStoryForm();
     loadStories();
   }
@@ -615,6 +666,14 @@ document.getElementById("btn-save-live")?.addEventListener("click", async () => 
     alert("Error saving live settings");
   } else {
     showToast("Live settings saved");
+
+    if (liveOn) {
+      await sendPushNotification(
+        "LIVE NOW",
+        data.title || "DA United is live",
+        "/live.html"
+      );
+    }
   }
 });
 
@@ -799,11 +858,18 @@ document.getElementById("btn-save-predictions")?.addEventListener("click", async
     .upsert({ id: 1, ...data });
 
   if (error) {
-    // fallback if table is named differently
     console.error(error);
     alert("Error saving predictions settings (check table name)");
   } else {
     showToast("Predictions settings saved");
+
+    if (predOn) {
+      await sendPushNotification(
+        "Predictions Open",
+        data.match_title || "Make your prediction now",
+        "/predictions.html"
+      );
+    }
   }
 });
 
@@ -823,7 +889,6 @@ function loadAllLists() {
   renderEventsPreview();
 }
 
-// If already logged in
 if (sessionStorage.getItem("da_admin_logged_in") === "true") {
   loadAllLists();
 }
