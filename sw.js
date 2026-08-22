@@ -1,4 +1,4 @@
-const CACHE_NAME = 'datdhub-v2';
+const CACHE_NAME = 'datdhub-v3'; // bumped so browsers treat this as a fresh worker
 
 const urlsToCache = [
   '/',
@@ -6,15 +6,28 @@ const urlsToCache = [
   '/dashboard.html',
   '/css/dashboard.css',
   '/assets/crest.png',
-  '/js/common.js',
   '/js/supabase.js',
   '/js/dashboard.js'
+  // '/js/common.js' removed — this file no longer exists, and its 404
+  // was causing cache.addAll() to fail, which failed the install step,
+  // which meant the service worker never activated, which meant
+  // navigator.serviceWorker.ready hung forever on the client.
 ];
 
 // Install
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
+    caches.open(CACHE_NAME).then((cache) => {
+      // Cache files individually and log failures instead of failing
+      // the whole install if one URL is missing/renamed in the future.
+      return Promise.all(
+        urlsToCache.map((url) =>
+          cache.add(url).catch((err) => {
+            console.error('SW: failed to cache', url, err);
+          })
+        )
+      );
+    })
   );
   self.skipWaiting();
 });
