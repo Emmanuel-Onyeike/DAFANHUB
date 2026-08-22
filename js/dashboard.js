@@ -20,6 +20,25 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
+// ===== ON-SCREEN DEBUG LOG (visible on iPhone, no cable/Mac needed) =====
+// Temporary — remove this block once push notifications are confirmed working.
+function debugLog(msg) {
+  console.log(msg);
+  let box = document.getElementById("da-debug-log");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "da-debug-log";
+    box.style.cssText = "position:fixed;bottom:0;left:0;right:0;max-height:40vh;overflow-y:auto;" +
+      "background:rgba(0,0,0,0.92);color:#22c55e;font-size:11px;font-family:monospace;" +
+      "padding:8px;z-index:99999;white-space:pre-wrap;border-top:2px solid #22c55e;";
+    document.body.appendChild(box);
+  }
+  const line = document.createElement("div");
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
 // ===== REGISTER SERVICE WORKER =====
 // This MUST run before subscribeUserToPush() is ever called, otherwise
 // navigator.serviceWorker.ready will hang forever with no error.
@@ -27,19 +46,21 @@ let swRegistrationPromise = null;
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) {
-    console.warn('Service workers not supported in this browser');
+    debugLog('❌ Service workers NOT supported in this browser');
     return Promise.resolve(null);
   }
+
+  debugLog('⏳ Registering service worker...');
 
   if (!swRegistrationPromise) {
     swRegistrationPromise = navigator.serviceWorker
       .register('/sw.js')
       .then((reg) => {
-        console.log('Service worker registered:', reg.scope);
+        debugLog('✅ Service worker registered: ' + reg.scope);
         return reg;
       })
       .catch((err) => {
-        console.error('Service worker registration failed:', err);
+        debugLog('❌ Service worker registration FAILED: ' + err.message);
         return null;
       });
   }
@@ -104,30 +125,40 @@ const btnAllow = document.getElementById("btn-allow-notifications");
 const btnDeny = document.getElementById("btn-deny-notifications");
 
 async function subscribeUserToPush() {
+  debugLog('▶️ subscribeUserToPush() started');
   try {
     // Make sure the service worker is registered and active before using it
     const reg = await registerServiceWorker();
     if (!reg) {
-      console.error("Cannot subscribe to push: service worker registration failed");
+      debugLog('❌ Cannot subscribe: service worker registration failed');
       return;
     }
 
+    debugLog('⏳ Waiting for navigator.serviceWorker.ready...');
     const registration = await navigator.serviceWorker.ready;
+    debugLog('✅ Service worker is ready');
 
     // Check if already subscribed
+    debugLog('⏳ Checking for existing subscription...');
     let subscription = await registration.pushManager.getSubscription();
 
     if (!subscription) {
+      debugLog('⏳ No existing subscription, calling pushManager.subscribe()...');
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
       });
+      debugLog('✅ New push subscription created');
+    } else {
+      debugLog('✅ Existing subscription found, reusing it');
     }
 
     const sub = subscription.toJSON();
+    debugLog('📋 Endpoint: ' + (sub.endpoint ? sub.endpoint.slice(0, 60) + '...' : 'MISSING'));
 
     // Save to Supabase
     if (window.supabaseClient) {
+      debugLog('⏳ Saving subscription to Supabase...');
       const { error } = await window.supabaseClient.from("push_subscriptions").upsert({
         endpoint: sub.endpoint,
         p256dh: sub.keys.p256dh,
@@ -135,17 +166,18 @@ async function subscribeUserToPush() {
       }, { onConflict: "endpoint" });
 
       if (error) {
-        console.error("Failed to save push subscription to Supabase:", error);
+        debugLog('❌ Supabase upsert FAILED: ' + JSON.stringify(error));
         return;
       }
+      debugLog('✅ Supabase upsert succeeded');
     } else {
-      console.error("Cannot save push subscription: window.supabaseClient not available");
+      debugLog('❌ Cannot save: window.supabaseClient not available');
       return;
     }
 
-    console.log("Push subscription saved");
+    debugLog('🎉 Push subscription fully saved!');
   } catch (err) {
-    console.error("Push subscription error:", err);
+    debugLog('❌ Push subscription ERROR: ' + (err.message || err));
   }
 }
 
@@ -189,6 +221,31 @@ if (btnDeny) {
 
 // Show the modal only once (after a short delay)
 setTimeout(showNotificationModal, 1200);
+
+// ===== TEMPORARY MANUAL TEST BUTTON =====
+// Lets you retrigger the subscribe flow anytime without clearing site data.
+// Remove this block once push is confirmed working.
+(function addDebugSubscribeButton() {
+  const btn = document.createElement("button");
+  btn.textContent = "🔔 Test Subscribe";
+  btn.style.cssText = "position:fixed;bottom:calc(40vh + 8px);right:8px;z-index:99999;" +
+    "background:#22c55e;color:#000;font-weight:600;font-size:12px;padding:8px 12px;" +
+    "border-radius:9999px;border:none;box-shadow:0 2px 8px rgba(0,0,0,0.3);";
+  btn.addEventListener("click", async () => {
+    debugLog('🔔 Manual test button tapped');
+    if ("Notification" in window) {
+      debugLog('Current permission: ' + Notification.permission);
+      const permission = await Notification.requestPermission();
+      debugLog('Permission after request: ' + permission);
+      if (permission === "granted") {
+        await subscribeUserToPush();
+      }
+    } else {
+      debugLog('❌ Notification API not supported in this browser');
+    }
+  });
+  document.body.appendChild(btn);
+})();
 
 // If the user already granted permission previously (e.g. reinstalled the
 // PWA, or cleared da_notifications_asked but browser permission persisted),
