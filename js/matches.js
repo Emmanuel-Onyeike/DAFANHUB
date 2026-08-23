@@ -1,5 +1,5 @@
 // ======================
-// DA United – Matches (Supabase + past results kept)
+// DA United – Matches (Supabase + past results + live match banner)
 // ======================
 
 const sidebar = document.getElementById("sidebar");
@@ -116,7 +116,7 @@ function renderMatchCard(m) {
   const homeScore = Number(m.home_score ?? m.score_home ?? 0);
   const awayScore = Number(m.away_score ?? m.score_away ?? 0);
   const opponent = m.opponent || m.away || "Opponent";
-  const isHome = (m.venue_type || m.home_away || "home").toLowerCase() !== "away";
+  const isHome = (m.venue_type || m.home_away || m.venue || "home").toLowerCase() !== "away";
   const competition = m.competition || "Club Friendlies";
   const venueLabel = isHome ? "Home" : "Away";
 
@@ -186,9 +186,127 @@ function renderMatchCard(m) {
   `;
 }
 
+// ===================== LIVE MATCH BANNER =====================
+// Same live-state logic as the dashboard's Match Centre card:
+// WE ARE LIVE (red dot) -> latest event -> FULL TIME / INTERRUPTED / CANCELLED.
+function venueSideLabels(venue) {
+  const daIsHome = (venue || "Home") !== "Away";
+  return {
+    da: daIsHome ? "Home" : "Away",
+    opp: daIsHome ? "Away" : "Home"
+  };
+}
+
+function eventLiveLine(e, venue) {
+  const labels = venueSideLabels(venue);
+  const sideLabel = e.side === "Opponent" ? labels.opp : labels.da;
+  const otherLabel = sideLabel === labels.da ? labels.opp : labels.da;
+  const player = e.player || "";
+  const min = e.minute ? `${e.minute}'` : "";
+  const pfx = player ? ` - ${player}` : "";
+
+  switch (e.type) {
+    case "Goal": return { main: `GOAL${pfx}`, badge: `${sideLabel} scores`, min };
+    case "Golazo": return { main: `A STUNNING GOAL${pfx}`, badge: `${sideLabel} scores`, min };
+    case "Own Goal": return { main: `OWN GOAL${pfx}`, badge: `${otherLabel} scores`, min };
+    case "Free Kick Goal": return { main: `A STUNNING FREE KICK${pfx}`, badge: `${sideLabel} scores`, min };
+    case "Penalty Scored": return { main: `PENALTY SCORED${pfx}`, badge: `${sideLabel} scores`, min };
+    case "Penalty Missed": return { main: `PENALTY MISSED${pfx}`, badge: null, min };
+    case "Possible Penalty": return { main: "WHAT CAN THIS BE?", badge: null, min };
+    case "Possible Free Kick": return { main: "POSSIBLE FREE KICK", badge: null, min };
+    case "Yellow Card": return { main: `YELLOW CARD${pfx}`, badge: `${sideLabel} gets a booking`, min };
+    case "Red Card": return { main: `RED CARD${pfx}`, badge: `${sideLabel} down to 10 men`, min };
+    case "Substitution": return { main: `SUBSTITUTION${pfx}`, badge: null, min };
+    case "VAR Check": return { main: "WHAT CAN THIS BE?", badge: null, min };
+    case "Goal Disallowed": return { main: "VAR: GOAL DISALLOWED", badge: null, min };
+    case "Offside": return { main: `OFFSIDE${pfx}`, badge: null, min };
+    case "Injury": return { main: `INJURY${pfx}`, badge: null, min };
+    case "Custom": return { main: (e.detail || "UPDATE").toUpperCase(), badge: null, min };
+    case "Kick Off": return { main: "Game underway", badge: null, min: "" };
+    default: return { main: `${e.type}${pfx}`, badge: null, min };
+  }
+}
+
+function matchStateCopy(match) {
+  const status = match.status || "Scheduled";
+  if (status === "Scheduled") return null;
+
+  const events = match.events ? (typeof match.events === "string" ? JSON.parse(match.events) : match.events) : [];
+  const lastEvent = events.length ? events[events.length - 1] : null;
+
+  let headerLabel = "MATCH UPDATE";
+  let dotClass = "bg-da-muted";
+  let sub = { main: "", badge: null, min: "" };
+  let showX = false;
+
+  if (status === "Live") {
+    headerLabel = "WE ARE LIVE";
+    dotClass = "bg-red-500 animate-pulse";
+    sub = lastEvent ? eventLiveLine(lastEvent, match.venue) : { main: "Game underway", badge: null, min: "" };
+  } else if (status === "HT") {
+    headerLabel = "HALF TIME";
+    dotClass = "bg-yellow-400";
+    sub = { main: "Game is paused at the break", badge: null, min: "" };
+  } else if (status === "FT" || status === "AET" || status === "Penalties") {
+    headerLabel = "FULL TIME";
+    dotClass = "bg-da-muted";
+    sub = { main: "Game ended", badge: null, min: "" };
+  } else if (status === "Postponed") {
+    headerLabel = "INTERRUPTED";
+    dotClass = "bg-yellow-400";
+    sub = { main: "Game is paused", badge: null, min: "" };
+  } else if (status === "Cancelled") {
+    headerLabel = "CANCELLED";
+    dotClass = "bg-red-500";
+    sub = { main: "Game cancelled", badge: null, min: "" };
+    showX = true;
+  }
+
+  return { headerLabel, dotClass, sub, showX, status };
+}
+
+function renderLiveBanner(match, state) {
+  const opponent = match.opponent || "Opponent";
+  const scoreHome = match.score_home ?? 0;
+  const scoreAway = match.score_away ?? 0;
+  const headerColorClass = state.status === "Cancelled" ? "text-red-400" : "text-white";
+
+  return `
+    <a href="live.html" class="block bg-da-card border ${state.status === "Live" ? "border-da-green/40 hover:border-da-green" : "border-da-border"} rounded-2xl p-5 transition-colors">
+      <div class="flex items-center justify-between mb-1">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full ${state.dotClass}"></span>
+          <span class="text-[11px] font-semibold tracking-wider uppercase ${headerColorClass}">${state.headerLabel}</span>
+        </div>
+        ${state.showX ? `<span class="text-red-400 text-lg font-bold">✕</span>` : ""}
+      </div>
+      <div class="mb-3">
+        <span class="text-sm font-semibold">${state.sub.main}</span>
+        ${state.sub.badge ? `<span class="ml-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-da-green/15 text-da-green">${state.sub.badge}</span>` : ""}
+        ${state.sub.min ? `<span class="ml-2 text-xs text-da-muted">${state.sub.min}</span>` : ""}
+      </div>
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex flex-col items-center gap-1 min-w-0">
+          <div class="w-10 h-10 rounded-lg bg-white flex items-center justify-center overflow-hidden flex-shrink-0">
+            <img src="assets/crest.png" alt="DA" class="w-full h-full object-contain" onerror="this.parentElement.innerHTML='<span class=\\'text-xs font-black text-black\\'>DA</span>'">
+          </div>
+          <span class="text-xs font-medium truncate">DA United</span>
+          <span class="text-xl font-bold">${scoreHome}</span>
+        </div>
+        <div class="text-da-muted text-sm font-semibold px-2">vs</div>
+        <div class="flex flex-col items-center gap-1 min-w-0">
+          <div class="w-10 h-10 rounded-full bg-da-border flex items-center justify-center text-xs font-bold text-da-muted flex-shrink-0">${opponentInitials(opponent)}</div>
+          <span class="text-xs font-medium truncate text-center">${opponent}</span>
+          <span class="text-xl font-bold">${scoreAway}</span>
+        </div>
+      </div>
+      <p class="text-sm text-da-muted mt-3">Tap to watch on Live →</p>
+    </a>
+  `;
+}
+
 async function loadMatches() {
   if (!window.supabaseClient) {
-    // Still show past matches even if Supabase not ready
     const listEl = document.getElementById("matches-list");
     const emptyEl = document.getElementById("matches-empty");
     if (listEl) {
@@ -204,7 +322,6 @@ async function loadMatches() {
   const liveMatch = document.getElementById("live-match");
 
   try {
-    // New matches from Admin / Supabase (newest first)
     const { data: dbMatches, error } = await window.supabaseClient
       .from("matches")
       .select("*")
@@ -213,8 +330,6 @@ async function loadMatches() {
     if (error) console.error("Matches load error", error);
 
     const fromDb = dbMatches || [];
-
-    // Combine: new ones first, then your 4 past results
     const all = [...fromDb, ...PAST_MATCHES];
 
     if (all.length === 0) {
@@ -225,34 +340,21 @@ async function loadMatches() {
       listEl.innerHTML = all.map(renderMatchCard).join("");
     }
 
-    // Live status
-    const { data: live } = await window.supabaseClient
-      .from("live")
+    // Live match banner — driven by the most recently touched match's
+    // status + latest event, not just a simple on/off flag.
+    const { data: mostRecent } = await window.supabaseClient
+      .from("matches")
       .select("*")
-      .eq("id", 1)
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
-    const anyLive = live && (
-      live.is_live === true ||
-      live.screen_1_active || live.screen_2_active || live.screen_3_active ||
-      live.screen_4_active || live.screen_5_active
-    );
+    const state = mostRecent ? matchStateCopy(mostRecent) : null;
 
-    if (anyLive) {
+    if (state) {
       liveEmpty.classList.add("hidden");
       liveMatch.classList.remove("hidden");
-      liveMatch.innerHTML = `
-        <a href="live.html" class="block bg-da-card border border-da-green/40 rounded-2xl p-5 hover:border-da-green transition-colors">
-          <div class="flex items-center gap-3">
-            <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-red-600 text-white text-[10px] font-bold">
-              <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
-              LIVE
-            </span>
-            <span class="font-semibold">${live.title || "Match in progress"}</span>
-          </div>
-          <p class="text-sm text-da-muted mt-2">Tap to watch on Live →</p>
-        </a>
-      `;
+      liveMatch.innerHTML = renderLiveBanner(mostRecent, state);
     } else {
       liveEmpty.classList.remove("hidden");
       liveMatch.classList.add("hidden");
@@ -260,7 +362,6 @@ async function loadMatches() {
     }
   } catch (e) {
     console.error("Matches error", e);
-    // Fallback: still show past matches
     emptyEl.classList.add("hidden");
     listEl.innerHTML = PAST_MATCHES.map(renderMatchCard).join("");
   }
@@ -272,10 +373,8 @@ function initMatches() {
     window.supabaseClient
       .channel("matches-page")
       .on("postgres_changes", { event: "*", schema: "public", table: "matches" }, () => loadMatches())
-      .on("postgres_changes", { event: "*", schema: "public", table: "live" }, () => loadMatches())
       .subscribe();
   } else {
-    // Show past matches immediately, retry Supabase
     const listEl = document.getElementById("matches-list");
     const emptyEl = document.getElementById("matches-empty");
     if (listEl) {
