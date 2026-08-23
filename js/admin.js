@@ -582,7 +582,18 @@ document.getElementById("btn-save-match")?.addEventListener("click", async () =>
   const { title, body } = buildStatusNotification(status, scoreHome, scoreAway, opponent);
   await sendPushNotification(title, body, "/matches.html");
 
-  resetMatchForm();
+  // IMPORTANT: while the match is still Live or at Half Time, keep the form
+  // bound to this same match (don't clear match-edit-id). Otherwise the next
+  // event you log creates a brand new orphan match instead of updating this
+  // one — which is why goals/cards were disappearing before.
+  if (status === "Live" || status === "HT") {
+    document.getElementById("match-form-title").textContent =
+      status === "Live" ? "Editing Live Match" : "Editing Match — Half Time";
+    document.getElementById("btn-cancel-match").classList.remove("hidden");
+  } else {
+    resetMatchForm();
+  }
+
   loadMatches();
 });
 
@@ -1117,6 +1128,39 @@ document.getElementById("btn-save-predictions")?.addEventListener("click", async
   }
 });
 
+// If there's already a Live or Half-Time match when the admin panel opens
+// (e.g. page refreshed mid-match), load it straight into the form so the
+// next event you log updates it — instead of leaving the form blank and
+// defaulting to a new "Full Time" match.
+async function autoLoadActiveLiveMatch() {
+  const idField = document.getElementById("match-edit-id");
+  if (!idField || idField.value) return; // already editing something — don't override
+  if (!window.supabaseClient) return;
+
+  const { data } = await window.supabaseClient
+    .from("matches")
+    .select("*")
+    .in("status", ["Live", "HT"])
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return;
+
+  idField.value = data.id;
+  document.getElementById("match-opponent").value = data.opponent || "";
+  document.getElementById("match-score-home").value = data.score_home ?? 0;
+  document.getElementById("match-score-away").value = data.score_away ?? 0;
+  document.getElementById("match-venue").value = data.venue || "Home";
+  document.getElementById("match-comp").value = data.competition || "Club Friendlies";
+  document.getElementById("match-status").value = data.status || "Live";
+  currentEvents = data.events ? (typeof data.events === "string" ? JSON.parse(data.events) : data.events) : [];
+  renderEventsPreview();
+  document.getElementById("match-form-title").textContent =
+    data.status === "Live" ? "Editing Live Match" : "Editing Match — Half Time";
+  document.getElementById("btn-cancel-match").classList.remove("hidden");
+}
+
 // ===================== INIT =====================
 function loadAllLists() {
   if (!window.supabaseClient) {
@@ -1131,6 +1175,7 @@ function loadAllLists() {
   loadTraining();
   loadDatv();
   renderEventsPreview();
+  autoLoadActiveLiveMatch();
 }
 
 if (sessionStorage.getItem("da_admin_logged_in") === "true") {
