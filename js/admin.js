@@ -1,5 +1,5 @@
 // ======================
-// DA United – Admin Panel (Full CRUD + Match Events + Push)
+// DA United – Admin Panel (Full CRUD + Live Match Events + Push)
 // ======================
 
 const ADMIN_PASSWORD = "123789";
@@ -100,15 +100,31 @@ async function sendPushNotification(title, body, url = "/dashboard.html") {
   }
 }
 
+// ===================== HOME/AWAY LABELING =====================
+// DA United's own venue field decides who is "Home" and who is "Away"
+// in the copy shown to supporters ("Home scores" / "Away gets a booking").
+function sideLabels(venue) {
+  const daIsHome = (venue || "Home") !== "Away";
+  return {
+    da: daIsHome ? "Home" : "Away",
+    opp: daIsHome ? "Away" : "Home"
+  };
+}
+
+function labelForSide(eventSide, venue) {
+  const labels = sideLabels(venue);
+  return eventSide === "Opponent" ? labels.opp : labels.da;
+}
+
 // ===================== MATCH EVENT → NOTIFICATION COPY =====================
-// Turns a single logged event into a punchy push notification.
-function buildEventNotification(e, opponent, scoreHome, scoreAway) {
+function buildEventNotification(e, opponent, scoreHome, scoreAway, venue) {
   const min = e.minute ? `${e.minute}'` : "";
   const player = (e.player || "").trim();
   const detail = (e.detail || "").trim();
   const scoreLine = `DA United ${scoreHome ?? 0} - ${scoreAway ?? 0} ${opponent || "Opponent"}`.trim();
   const minSuffix = min ? ` ${min}` : "";
   const detailSuffix = detail ? ` (${detail})` : "";
+  const side = labelForSide(e.side, venue);
 
   switch (e.type) {
     case "Kick Off":
@@ -117,13 +133,13 @@ function buildEventNotification(e, opponent, scoreHome, scoreAway) {
     case "Goal":
       return {
         title: "⚽ GOALLLLLLLLL!",
-        body: `${player || "DA United"} scores${minSuffix}${detailSuffix}! ${scoreLine}`
+        body: `${player || "DA United"} scores${minSuffix}${detailSuffix}! ${side} scores. ${scoreLine}`
       };
 
     case "Golazo":
       return {
-        title: "🚀 GOLAZOOO!!",
-        body: `${player || "DA United"} with an absolute screamer${minSuffix}${detailSuffix}! ${scoreLine}`
+        title: "🚀 A STUNNING GOAL!",
+        body: `${player || "DA United"} with an absolute screamer${minSuffix}${detailSuffix}! ${side} scores. ${scoreLine}`
       };
 
     case "Own Goal":
@@ -134,14 +150,14 @@ function buildEventNotification(e, opponent, scoreHome, scoreAway) {
 
     case "Free Kick Goal":
       return {
-        title: "🎯 FREE KICK GOALLL!",
-        body: `${player || "DA United"} curls it in${minSuffix}! ${scoreLine}`
+        title: "🎯 A STUNNING FREE KICK!",
+        body: `${player || "DA United"} curls it in${minSuffix}! ${side} scores. ${scoreLine}`
       };
 
     case "Penalty Scored":
       return {
         title: "✅ Penalty Scored!",
-        body: `${player || "DA United"} sends the keeper the wrong way${minSuffix}. ${scoreLine}`
+        body: `${player || "DA United"} sends the keeper the wrong way${minSuffix}. ${side} scores. ${scoreLine}`
       };
 
     case "Penalty Missed":
@@ -152,7 +168,7 @@ function buildEventNotification(e, opponent, scoreHome, scoreAway) {
 
     case "Possible Penalty":
       return {
-        title: "🤔 Possible Penalty!",
+        title: "🤔 What can this be?",
         body: `Shout for a penalty${minSuffix} — referee taking a look.`
       };
 
@@ -171,13 +187,13 @@ function buildEventNotification(e, opponent, scoreHome, scoreAway) {
     case "Yellow Card":
       return {
         title: "🟨 Yellow Card",
-        body: `${player || "A player"} is booked${minSuffix}.`
+        body: `${player || "A player"} is booked${minSuffix}. ${side} gets a booking.`
       };
 
     case "Red Card":
       return {
         title: "🟥 RED CARD!",
-        body: `${player || "A player"} is sent off${minSuffix}!`
+        body: `${player || "A player"} is sent off${minSuffix}! ${side} down to 10 men.`
       };
 
     case "Substitution":
@@ -188,7 +204,7 @@ function buildEventNotification(e, opponent, scoreHome, scoreAway) {
 
     case "VAR Check":
       return {
-        title: "📺 VAR Check",
+        title: "📺 What can this be?",
         body: `Referee reviewing the incident${minSuffix}...`
       };
 
@@ -216,6 +232,9 @@ function buildEventNotification(e, opponent, scoreHome, scoreAway) {
     case "FT":
       return { title: "🏁 Full Time", body: `${scoreLine} — that's full time.` };
 
+    case "Custom":
+      return { title: "📢 DA United", body: detail || player || "Live update" };
+
     default:
       return {
         title: "DA United",
@@ -232,7 +251,7 @@ function buildStatusNotification(status, scoreHome, scoreAway, opponent) {
     case "Scheduled":
       return { title: "📅 Match Scheduled", body: `DA United vs ${opponent || "Opponent"}` };
     case "Live":
-      return { title: "🟢 We are LIVE!", body: scoreLine };
+      return { title: "🔴 WE ARE LIVE!", body: `Game underway — ${scoreLine}` };
     case "HT":
       return { title: "⏸️ Half Time", body: scoreLine };
     case "FT":
@@ -242,7 +261,7 @@ function buildStatusNotification(status, scoreHome, scoreAway, opponent) {
     case "Penalties":
       return { title: "🎯 Penalty Shootout!", body: scoreLine };
     case "Postponed":
-      return { title: "⛔ Match Postponed", body: `DA United vs ${opponent || "Opponent"} has been postponed.` };
+      return { title: "⏳ Match Interrupted", body: `DA United vs ${opponent || "Opponent"} — game is paused.` };
     case "Cancelled":
       return { title: "🚫 Match Cancelled", body: `DA United vs ${opponent || "Opponent"} has been cancelled.` };
     default:
@@ -264,27 +283,77 @@ function renderEventsPreview() {
 
   box.innerHTML = currentEvents.map((e, i) => `
     <div class="flex items-center justify-between bg-da-dark/50 rounded-lg px-3 py-1.5">
-      <span>${e.minute || "—"}' · <strong>${e.type}</strong> ${e.player ? "– " + e.player : ""} ${e.detail ? `<em class="text-da-muted">(${e.detail})</em>` : ""}</span>
+      <span>
+        <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded ${e.side === "Opponent" ? "bg-red-500/20 text-red-400" : "bg-da-green/20 text-da-green"}">${e.side === "Opponent" ? "OPP" : "DA"}</span>
+        ${e.minute || "—"}' · <strong>${e.type}</strong> ${e.player ? "– " + e.player : ""} ${e.detail ? `<em class="text-da-muted">(${e.detail})</em>` : ""}
+      </span>
       <button type="button" data-idx="${i}" class="text-red-400 text-xs remove-event">✕</button>
     </div>
   `).join("");
 
   box.querySelectorAll(".remove-event").forEach(btn => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       currentEvents.splice(Number(btn.dataset.idx), 1);
       renderEventsPreview();
+      await persistMatchState();
+      loadMatches();
     });
   });
 }
 
+// ===================== AUTO-SAVE MATCH STATE =====================
+// Every event/update saves straight to Supabase so the live banner on the
+// dashboard updates immediately, without needing the big "Save Match" click.
+async function persistMatchState() {
+  const idField = document.getElementById("match-edit-id");
+  const id = idField.value;
+  const scoreHome = parseInt(document.getElementById("match-score-home").value) || 0;
+  const scoreAway = parseInt(document.getElementById("match-score-away").value) || 0;
+  const opponent = document.getElementById("match-opponent").value;
+  const status = document.getElementById("match-status").value || "Live";
+
+  const data = {
+    opponent,
+    score_home: scoreHome,
+    score_away: scoreAway,
+    venue: document.getElementById("match-venue").value,
+    competition: document.getElementById("match-comp").value || "Club Friendlies",
+    status,
+    events: currentEvents,
+    scorers: currentEvents
+      .filter(e => ["Goal", "Own Goal", "Golazo", "Free Kick Goal", "Penalty Scored"].includes(e.type))
+      .map(e => `${e.player} ${e.minute}`)
+      .join("\n"),
+    updated_at: new Date().toISOString()
+  };
+
+  if (id) {
+    const { error } = await window.supabaseClient.from("matches").update(data).eq("id", id);
+    if (error) {
+      console.error("Auto-save (update) error:", error);
+    }
+    return id;
+  } else {
+    const { data: inserted, error } = await window.supabaseClient.from("matches").insert([data]).select();
+    if (error) {
+      console.error("Auto-save (insert) error:", error);
+      return null;
+    }
+    const newId = inserted && inserted[0] && inserted[0].id;
+    if (newId) idField.value = newId;
+    return newId || null;
+  }
+}
+
 document.getElementById("btn-add-event")?.addEventListener("click", async () => {
   const type = document.getElementById("event-type").value;
+  const side = document.getElementById("event-side")?.value || "DA United";
   const player = document.getElementById("event-player").value.trim();
   const minute = document.getElementById("event-minute").value.trim();
   const detailInput = document.getElementById("event-detail");
   const detail = detailInput ? detailInput.value.trim() : "";
 
-  const newEvent = { type, player, minute, detail };
+  const newEvent = { type, side, player, minute, detail };
   currentEvents.push(newEvent);
 
   document.getElementById("event-player").value = "";
@@ -292,15 +361,38 @@ document.getElementById("btn-add-event")?.addEventListener("click", async () => 
   if (detailInput) detailInput.value = "";
   renderEventsPreview();
 
+  // Save immediately so the live banner reflects this the instant it's added
+  await persistMatchState();
+  loadMatches();
+
   // Send a live push for this event right away, unless the admin unchecked it
   const notifyCheckbox = document.getElementById("event-notify");
   if (!notifyCheckbox || notifyCheckbox.checked) {
     const opponent = document.getElementById("match-opponent")?.value || "";
     const scoreHome = document.getElementById("match-score-home")?.value || 0;
     const scoreAway = document.getElementById("match-score-away")?.value || 0;
-    const { title, body } = buildEventNotification(newEvent, opponent, scoreHome, scoreAway);
+    const venue = document.getElementById("match-venue")?.value || "Home";
+    const { title, body } = buildEventNotification(newEvent, opponent, scoreHome, scoreAway, venue);
     await sendPushNotification(title, body, "/matches.html");
   }
+});
+
+// Free-text custom live update (e.g. "A stunning free kick")
+document.getElementById("btn-push-custom")?.addEventListener("click", async () => {
+  const input = document.getElementById("custom-update-text");
+  const text = input?.value.trim();
+  if (!text) return;
+
+  const newEvent = { type: "Custom", side: "DA United", player: "", minute: "", detail: text };
+  currentEvents.push(newEvent);
+  renderEventsPreview();
+
+  await persistMatchState();
+  loadMatches();
+
+  await sendPushNotification("📢 DA United", text, "/matches.html");
+
+  input.value = "";
 });
 
 // ===================== FIXTURES =====================
@@ -473,45 +565,25 @@ async function loadMatches() {
 }
 
 document.getElementById("btn-save-match")?.addEventListener("click", async () => {
-  const id = document.getElementById("match-edit-id").value;
   const scoreHome = parseInt(document.getElementById("match-score-home").value) || 0;
   const scoreAway = parseInt(document.getElementById("match-score-away").value) || 0;
   const opponent = document.getElementById("match-opponent").value;
   const status = document.getElementById("match-status").value || "FT";
 
-  const data = {
-    opponent,
-    score_home: scoreHome,
-    score_away: scoreAway,
-    venue: document.getElementById("match-venue").value,
-    competition: document.getElementById("match-comp").value || "Club Friendlies",
-    status,
-    events: currentEvents,
-    scorers: currentEvents
-      .filter(e => e.type === "Goal" || e.type === "Own Goal" || e.type === "Golazo" || e.type === "Free Kick Goal" || e.type === "Penalty Scored")
-      .map(e => `${e.player} ${e.minute}`)
-      .join("\n")
-  };
+  const id = await persistMatchState();
 
-  let error;
-  if (id) {
-    ({ error } = await window.supabaseClient.from("matches").update(data).eq("id", id));
-  } else {
-    ({ error } = await window.supabaseClient.from("matches").insert([data]));
+  if (!id) {
+    alert("Error saving match — check the console for details.");
+    return;
   }
 
-  if (error) {
-    console.error(error);
-    alert("Error saving match");
-  } else {
-    showToast(id ? "Match updated" : "Match saved");
+  showToast("Match saved");
 
-    const { title, body } = buildStatusNotification(status, scoreHome, scoreAway, opponent);
-    await sendPushNotification(title, body, "/matches.html");
+  const { title, body } = buildStatusNotification(status, scoreHome, scoreAway, opponent);
+  await sendPushNotification(title, body, "/matches.html");
 
-    resetMatchForm();
-    loadMatches();
-  }
+  resetMatchForm();
+  loadMatches();
 });
 
 document.getElementById("btn-cancel-match")?.addEventListener("click", resetMatchForm);
@@ -803,7 +875,7 @@ document.getElementById("btn-save-gallery")?.addEventListener("click", async () 
   }
 });
 
-// ===================== LIVE =====================
+// ===================== LIVE (stream) =====================
 let liveOn = false;
 const toggleLive = document.getElementById("toggle-live");
 
