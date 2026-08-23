@@ -1,5 +1,5 @@
 // ======================
-// DA United – Dashboard (Supabase + Sticky Notifications)
+// DA United – Dashboard (Supabase + Sticky Notifications + Live Match Centre)
 // ======================
 
 // ----- VAPID Public Key -----
@@ -284,17 +284,182 @@ async function loadLatestStories() {
   `).join("");
 }
 
-// Run loaders
+// ===================== LIVE MATCH CENTRE =====================
+// Reads the most recently touched match and renders the live-state banner:
+// WE ARE LIVE (red dot) -> latest event -> FULL TIME / INTERRUPTED / CANCELLED.
+// The banner stays on "WE ARE LIVE" no matter how many events get logged —
+// it only changes when the admin sets Match Status to something else and saves.
+
+function venueSideLabels(venue) {
+  const daIsHome = (venue || "Home") !== "Away";
+  return {
+    da: daIsHome ? "Home" : "Away",
+    opp: daIsHome ? "Away" : "Home"
+  };
+}
+
+function eventLiveLine(e, venue) {
+  const labels = venueSideLabels(venue);
+  const sideLabel = e.side === "Opponent" ? labels.opp : labels.da;
+  const otherLabel = sideLabel === labels.da ? labels.opp : labels.da;
+  const player = e.player || "";
+  const min = e.minute ? `${e.minute}'` : "";
+  const pfx = player ? ` - ${player}` : "";
+
+  switch (e.type) {
+    case "Goal": return { main: `GOAL${pfx}`, badge: `${sideLabel} scores`, min };
+    case "Golazo": return { main: `A STUNNING GOAL${pfx}`, badge: `${sideLabel} scores`, min };
+    case "Own Goal": return { main: `OWN GOAL${pfx}`, badge: `${otherLabel} scores`, min };
+    case "Free Kick Goal": return { main: `A STUNNING FREE KICK${pfx}`, badge: `${sideLabel} scores`, min };
+    case "Penalty Scored": return { main: `PENALTY SCORED${pfx}`, badge: `${sideLabel} scores`, min };
+    case "Penalty Missed": return { main: `PENALTY MISSED${pfx}`, badge: null, min };
+    case "Possible Penalty": return { main: "WHAT CAN THIS BE?", badge: null, min };
+    case "Possible Free Kick": return { main: "POSSIBLE FREE KICK", badge: null, min };
+    case "Yellow Card": return { main: `YELLOW CARD${pfx}`, badge: `${sideLabel} gets a booking`, min };
+    case "Red Card": return { main: `RED CARD${pfx}`, badge: `${sideLabel} down to 10 men`, min };
+    case "Substitution": return { main: `SUBSTITUTION${pfx}`, badge: null, min };
+    case "VAR Check": return { main: "WHAT CAN THIS BE?", badge: null, min };
+    case "Goal Disallowed": return { main: "VAR: GOAL DISALLOWED", badge: null, min };
+    case "Offside": return { main: `OFFSIDE${pfx}`, badge: null, min };
+    case "Injury": return { main: `INJURY${pfx}`, badge: null, min };
+    case "Custom": return { main: (e.detail || "UPDATE").toUpperCase(), badge: null, min };
+    case "Kick Off": return { main: "Game underway", badge: null, min: "" };
+    default: return { main: `${e.type}${pfx}`, badge: null, min };
+  }
+}
+
+function matchStateCopy(match) {
+  const status = match.status || "Scheduled";
+  if (status === "Scheduled") return null;
+
+  const events = match.events ? (typeof match.events === "string" ? JSON.parse(match.events) : match.events) : [];
+  const lastEvent = events.length ? events[events.length - 1] : null;
+
+  let headerLabel = "MATCH UPDATE";
+  let dotClass = "bg-da-muted";
+  let sub = { main: "", badge: null, min: "" };
+  let showX = false;
+
+  if (status === "Live") {
+    headerLabel = "WE ARE LIVE";
+    dotClass = "bg-red-500 animate-pulse";
+    sub = lastEvent ? eventLiveLine(lastEvent, match.venue) : { main: "Game underway", badge: null, min: "" };
+  } else if (status === "HT") {
+    headerLabel = "HALF TIME";
+    dotClass = "bg-yellow-400";
+    sub = { main: "Game is paused at the break", badge: null, min: "" };
+  } else if (status === "FT" || status === "AET" || status === "Penalties") {
+    headerLabel = "FULL TIME";
+    dotClass = "bg-da-muted";
+    sub = { main: "Game ended", badge: null, min: "" };
+  } else if (status === "Postponed") {
+    headerLabel = "INTERRUPTED";
+    dotClass = "bg-yellow-400";
+    sub = { main: "Game is paused", badge: null, min: "" };
+  } else if (status === "Cancelled") {
+    headerLabel = "CANCELLED";
+    dotClass = "bg-red-500";
+    sub = { main: "Game cancelled", badge: null, min: "" };
+    showX = true;
+  }
+
+  return { headerLabel, dotClass, sub, showX, status };
+}
+
+function renderNoLiveMatch(card) {
+  card.innerHTML = `
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-da-muted"></span>
+        <span class="text-[11px] font-semibold tracking-wider text-da-muted uppercase">No Live Match</span>
+      </div>
+    </div>
+    <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-9 h-9 rounded-lg bg-white flex items-center justify-center overflow-hidden flex-shrink-0">
+          <img src="assets/crest.png" alt="DA" class="w-full h-full object-contain" onerror="this.parentElement.innerHTML='<span class=\\'text-[9px] font-black text-black\\'>DA</span>'">
+        </div>
+        <span class="text-sm font-medium truncate">DA United</span>
+      </div>
+      <div class="text-2xl font-bold tracking-tight px-2">— : —</div>
+      <div class="flex items-center gap-2.5 min-w-0 justify-end">
+        <span class="text-sm font-medium truncate text-right">Opponent</span>
+        <div class="w-9 h-9 rounded-full bg-da-border flex items-center justify-center text-xs font-bold text-da-muted flex-shrink-0">vs</div>
+      </div>
+    </div>
+  `;
+}
+
+async function loadMatchCentre() {
+  if (!window.supabaseClient) return;
+  const card = document.getElementById("match-centre-card");
+  if (!card) return;
+
+  const { data } = await window.supabaseClient
+    .from("matches")
+    .select("*")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const state = data ? matchStateCopy(data) : null;
+
+  if (!state) {
+    renderNoLiveMatch(card);
+    return;
+  }
+
+  const opponent = data.opponent || "Opponent";
+  const scoreHome = data.score_home ?? 0;
+  const scoreAway = data.score_away ?? 0;
+  const headerColorClass = state.status === "Cancelled" ? "text-red-400" : "text-white";
+
+  card.innerHTML = `
+    <div class="flex items-center justify-between mb-1">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full ${state.dotClass}"></span>
+        <span class="text-[11px] font-semibold tracking-wider uppercase ${headerColorClass}">${state.headerLabel}</span>
+      </div>
+      ${state.showX ? `<span class="text-red-400 text-lg font-bold">✕</span>` : ""}
+    </div>
+    <div class="mb-4">
+      <span class="text-sm font-semibold">${state.sub.main}</span>
+      ${state.sub.badge ? `<span class="ml-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-da-green/15 text-da-green">${state.sub.badge}</span>` : ""}
+      ${state.sub.min ? `<span class="ml-2 text-xs text-da-muted">${state.sub.min}</span>` : ""}
+    </div>
+    <div class="flex items-center justify-between gap-3">
+      <div class="flex flex-col items-center gap-1.5 min-w-0">
+        <div class="w-9 h-9 rounded-lg bg-white flex items-center justify-center overflow-hidden flex-shrink-0">
+          <img src="assets/crest.png" alt="DA" class="w-full h-full object-contain" onerror="this.parentElement.innerHTML='<span class=\\'text-[9px] font-black text-black\\'>DA</span>'">
+        </div>
+        <span class="text-xs font-medium truncate">DA United</span>
+        <span class="text-xl font-bold">${scoreHome}</span>
+      </div>
+      <div class="text-da-muted text-sm font-semibold px-2">vs</div>
+      <div class="flex flex-col items-center gap-1.5 min-w-0">
+        <div class="w-9 h-9 rounded-full bg-da-border flex items-center justify-center text-xs font-bold text-da-muted flex-shrink-0">${opponent.slice(0, 2).toUpperCase()}</div>
+        <span class="text-xs font-medium truncate text-center">${opponent}</span>
+        <span class="text-xl font-bold">${scoreAway}</span>
+      </div>
+    </div>
+  `;
+}
+
+// ===== INIT =====
 function initDashboard() {
   if (window.supabaseClient) {
     loadNextFixture();
     loadSeasonRecord();
     loadLatestStories();
+    loadMatchCentre();
 
     window.supabaseClient
       .channel('dashboard-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, () => loadNextFixture())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => loadSeasonRecord())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => {
+        loadSeasonRecord();
+        loadMatchCentre();
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stories' }, () => loadLatestStories())
       .subscribe();
   } else {
