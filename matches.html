@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Predictions — DA United Supporter Hub</title>
+  <title>Matches — DA United Supporter Hub</title>
 
   <!-- PWA -->
   <link rel="manifest" href="/manifest.json">
@@ -78,7 +78,7 @@
         Fixtures
       </a>
 
-      <a href="matches.html" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
+      <a href="matches.html" class="nav-item active flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         Matches
       </a>
@@ -103,7 +103,7 @@
         DA TV
       </a>
 
-      <a href="predictions.html" class="nav-item active flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium">
+      <a href="predictions.html" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
         Predictions
       </a>
@@ -151,7 +151,7 @@
         <div class="text-sm text-da-muted tracking-wide hidden sm:block">
           DA UNITED <span class="mx-1.5">/</span> <span class="text-white">SUPPORTER HUB</span>
         </div>
-        <div class="text-sm font-semibold sm:hidden">Predictions</div>
+        <div class="text-sm font-semibold sm:hidden">Matches</div>
       </div>
       <div class="flex items-center gap-3">
         <div class="flex items-center gap-2">
@@ -164,73 +164,42 @@
     <main class="flex-1 p-4 sm:p-6 lg:p-8">
 
       <div class="mb-6 sm:mb-8">
-        <p class="text-xs tracking-widest text-da-green uppercase font-semibold mb-2">Your Call</p>
-        <h1 class="text-3xl sm:text-4xl font-bold tracking-tight mb-2">Predictions.</h1>
-        <p class="text-da-muted text-sm sm:text-base">Read the game. Back your team. Make your matchday call.</p>
+        <p class="text-xs tracking-widest text-da-green uppercase font-semibold mb-2">Results & Live</p>
+        <h1 class="text-3xl sm:text-4xl font-bold tracking-tight mb-2">Matches.</h1>
+        <p class="text-da-muted text-sm sm:text-base">Every result, every goal, every card — and the live match as it happens.</p>
       </div>
 
-      <!-- EMPTY STATE -->
-      <div id="prediction-empty" class="bg-da-card border border-da-border border-dashed rounded-2xl p-10 sm:p-14 text-center">
-        <div class="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-5">
-          <svg class="w-8 h-8 text-da-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-          </svg>
+      <!-- LIVE MATCH BANNER -->
+      <div class="mb-6 sm:mb-8">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold">Live Match</h3>
         </div>
-        <h3 class="text-lg font-semibold mb-2">No fixture open for predictions</h3>
-        <p class="text-da-muted text-sm max-w-md mx-auto">
-          When the Admin posts the next match, you will be able to lock in your scoreline, first goalscorer and Man of the Match here.
-        </p>
+
+        <div id="live-empty" class="bg-da-card border border-da-border border-dashed rounded-2xl p-6 text-center">
+          <p class="text-da-muted text-sm">No live match right now. Check back on matchday.</p>
+        </div>
+
+        <div id="live-match" class="hidden"></div>
       </div>
 
-      <!-- PREDICTION FORM -->
-      <div id="prediction-form-wrapper" class="hidden">
-        <div class="bg-da-card border border-da-border rounded-2xl p-5 sm:p-7 max-w-2xl">
+      <!-- RESULTS -->
+      <div>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold">Results</h3>
+        </div>
 
-          <div class="flex items-start justify-between mb-6">
-            <div>
-              <p class="text-[11px] font-semibold tracking-wider text-da-green uppercase mb-1">Next Fixture</p>
-              <h2 id="pred-match-title" class="text-xl sm:text-2xl font-bold">DA United vs Opponent</h2>
-              <p id="pred-match-meta" class="text-sm text-da-muted mt-1"></p>
-            </div>
-            <svg class="w-6 h-6 text-da-green opacity-60" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2L9 8H3l4.5 4.5L5 21l7-4.5L19 21l-2.5-8.5L21 8h-6L12 2z"/>
+        <div id="matches-empty" class="hidden bg-da-card border border-da-border border-dashed rounded-2xl p-10 sm:p-14 text-center">
+          <div class="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-5">
+            <svg class="w-8 h-8 text-da-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
           </div>
+          <h3 class="text-lg font-semibold mb-2">No matches yet</h3>
+          <p class="text-da-muted text-sm max-w-md mx-auto">Results will show up here once the Admin logs the first match.</p>
+        </div>
 
-          <div class="mb-6">
-            <label class="block text-sm text-da-muted mb-2">Pick the scoreline</label>
-            <div class="flex items-center gap-3">
-              <input type="number" id="score-home" min="0" max="20" value="0"
-                     class="w-16 h-12 text-center text-xl font-bold bg-da-dark border border-da-border rounded-xl focus:outline-none focus:border-da-green/60 transition-colors">
-              <span class="text-2xl font-bold text-da-muted">:</span>
-              <input type="number" id="score-away" min="0" max="20" value="0"
-                     class="w-16 h-12 text-center text-xl font-bold bg-da-dark border border-da-border rounded-xl focus:outline-none focus:border-da-green/60 transition-colors">
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-7">
-            <div>
-              <label class="block text-sm text-da-muted mb-2">First goalscorer</label>
-              <select id="first-scorer"
-                      class="w-full h-11 px-4 bg-da-dark border border-da-border rounded-xl text-sm focus:outline-none focus:border-da-green/60 transition-colors appearance-none">
-                <option value="">Select a player</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm text-da-muted mb-2">Man of the match</label>
-              <select id="motm"
-                      class="w-full h-11 px-4 bg-da-dark border border-da-border rounded-xl text-sm focus:outline-none focus:border-da-green/60 transition-colors appearance-none">
-                <option value="">Select a player</option>
-              </select>
-            </div>
-          </div>
-
-          <button id="btn-lock-prediction"
-                  class="bg-da-green hover:bg-green-400 text-black font-semibold px-6 py-3 rounded-full transition-colors">
-            Lock in prediction
-          </button>
-
-          <div id="prediction-feedback" class="hidden mt-5 p-4 rounded-xl text-sm"></div>
+        <div id="matches-list" class="space-y-4">
+          <div class="text-center py-8 text-da-muted text-sm">Loading matches...</div>
         </div>
       </div>
 
@@ -247,7 +216,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/js/supabase.js"></script>
-  <script src="/js/predictions.js"></script>
+  <script src="/js/matches.js"></script>
 
 </body>
 </html>
