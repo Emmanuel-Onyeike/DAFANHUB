@@ -341,7 +341,8 @@ function matchStateCopy(match) {
   let showX = false;
 
   if (status === "Live") {
-    headerLabel = "WE ARE LIVE";
+    const hasRealEvent = lastEvent && lastEvent.type !== "Kick Off";
+    headerLabel = hasRealEvent ? "LIVE" : "WE ARE LIVE";
     dotClass = "bg-red-500 animate-pulse";
     sub = lastEvent ? eventLiveLine(lastEvent, match.venue) : { main: "Game underway", badge: null, min: "" };
   } else if (status === "HT") {
