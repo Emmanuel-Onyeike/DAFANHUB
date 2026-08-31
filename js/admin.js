@@ -304,7 +304,10 @@ function renderEventsPreview() {
 // ===================== AUTO-SAVE MATCH STATE =====================
 // Every event/update saves straight to Supabase so the live banner on the
 // dashboard updates immediately, without needing the big "Save Match" click.
+let lastMatchSaveError = null;
+
 async function persistMatchState() {
+  lastMatchSaveError = null;
   const idField = document.getElementById("match-edit-id");
   const id = idField.value;
   const scoreHome = parseInt(document.getElementById("match-score-home").value) || 0;
@@ -312,7 +315,7 @@ async function persistMatchState() {
   const opponent = document.getElementById("match-opponent").value;
   const status = document.getElementById("match-status").value || "Live";
 
-  const data = {
+  const baseData = {
     opponent,
     score_home: scoreHome,
     score_away: scoreAway,
@@ -323,26 +326,39 @@ async function persistMatchState() {
     scorers: currentEvents
       .filter(e => ["Goal", "Own Goal", "Golazo", "Free Kick Goal", "Penalty Scored"].includes(e.type))
       .map(e => `${e.player} ${e.minute}`)
-      .join("\n"),
-    updated_at: new Date().toISOString()
+      .join("\n")
   };
 
-  if (id) {
-    const { error } = await window.supabaseClient.from("matches").update(data).eq("id", id);
-    if (error) {
-      console.error("Auto-save (update) error:", error);
+  async function attemptWrite(includeUpdatedAt) {
+    const data = includeUpdatedAt ? { ...baseData, updated_at: new Date().toISOString() } : { ...baseData };
+    if (id) {
+      return window.supabaseClient.from("matches").update(data).eq("id", id);
     }
-    return id;
-  } else {
-    const { data: inserted, error } = await window.supabaseClient.from("matches").insert([data]).select();
-    if (error) {
-      console.error("Auto-save (insert) error:", error);
-      return null;
-    }
-    const newId = inserted && inserted[0] && inserted[0].id;
-    if (newId) idField.value = newId;
-    return newId || null;
+    return window.supabaseClient.from("matches").insert([data]).select();
   }
+
+  let { data: result, error } = await attemptWrite(true);
+
+  // If the matches table doesn't have an `updated_at` column yet, retry
+  // without it rather than failing outright. Live-match ordering on the
+  // dashboard needs that column though — see matches-table-fix.sql.
+  const errText = error ? JSON.stringify(error) : "";
+  if (error && /updated_at/i.test(errText)) {
+    console.warn("`updated_at` column missing on the matches table — saving without it. Run matches-table-fix.sql in Supabase to enable full live-match tracking.");
+    ({ data: result, error } = await attemptWrite(false));
+  }
+
+  if (error) {
+    console.error("Match save error:", error);
+    lastMatchSaveError = error;
+    return id || null;
+  }
+
+  if (id) return id;
+
+  const newId = result && result[0] && result[0].id;
+  if (newId) idField.value = newId;
+  return newId || null;
 }
 
 document.getElementById("btn-add-event")?.addEventListener("click", async () => {
@@ -573,7 +589,9 @@ document.getElementById("btn-save-match")?.addEventListener("click", async () =>
   const id = await persistMatchState();
 
   if (!id) {
-    alert("Error saving match — check the console for details.");
+    const err = lastMatchSaveError;
+    const details = err ? (err.message || err.details || err.hint || JSON.stringify(err)) : "Unknown error";
+    alert("Error saving match:\n\n" + details);
     return;
   }
 
