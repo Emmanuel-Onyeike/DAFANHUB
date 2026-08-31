@@ -33,14 +33,14 @@ document.querySelectorAll("#sidebar a").forEach(link => {
 const PAST_MATCHES = [
   {
     opponent: "Ashgrove",
-    home_score: 3,
-    away_score: 4,
+    home_score: 2,
+    away_score: 3,
     venue_type: "away",
     competition: "Club Friendlies",
     scorers: [
       { name: "Victor", minute: "15'" },
-      { name: "Victor", minute: "25'" },
-      { name: "Baseboy", minute: "50'" }
+      { name: "Victor", minute: "25'" }
+ 
     ],
     opp_scorers: []
   },
