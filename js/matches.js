@@ -29,7 +29,6 @@ document.querySelectorAll("#sidebar a").forEach(link => {
   });
 });
 
-// ===== Keep your existing past results =====
 const PAST_MATCHES = [
   {
     opponent: "Ashgrove",
@@ -40,7 +39,6 @@ const PAST_MATCHES = [
     scorers: [
       { name: "Victor", minute: "15'" },
       { name: "Victor", minute: "25'" }
- 
     ],
     opp_scorers: []
   },
@@ -84,6 +82,24 @@ const PAST_MATCHES = [
     ],
     opp_scorers: [
       { name: "Wilson", minute: "30'" }
+    ]
+  },
+  {
+    opponent: "Higher Ground FC",
+    home_score: 4,
+    away_score: 3,
+    venue_type: "home",
+    competition: "Club Friendlies",
+    scorers: [
+      { name: "Miracle", minute: "45+5'" },
+      { name: "Emma", minute: "47'" },
+      { name: "Ebube", minute: "60'" },
+      { name: "Emma", minute: "90+7'" }
+    ],
+    opp_scorers: [
+      { name: "Chiboy", minute: "12'" },
+      { name: "Mheera", minute: "23'" },
+      { name: "Timo", minute: "35'" }
     ]
   }
 ];
