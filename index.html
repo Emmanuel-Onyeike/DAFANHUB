@@ -19,10 +19,11 @@
           colors: {
             'da-green': '#22c55e',
             'da-green-dark': '#16a34a',
-            'da-dark': '#050805',
-            'da-card': '#0b120b',
-            'da-border': '#1a2a1a',
-            'da-muted': '#6b7c6b',
+            'da-dark': '#030503',
+            'da-sidebar': '#060906',
+            'da-card': '#0a0f0a',
+            'da-border': '#152215',
+            'da-muted': '#7a8c7a',
           },
           fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
           boxShadow: {
@@ -44,17 +45,6 @@
     .blob-a { animation: drift1 14s ease-in-out infinite; }
     .blob-b { animation: drift2 18s ease-in-out infinite; }
 
-    @keyframes slideDownFade {
-      from { opacity: 0; transform: translate(-50%, -20px); }
-      to   { opacity: 1; transform: translate(-50%, 0); }
-    }
-    @keyframes slideUpFade {
-      from { opacity: 1; transform: translate(-50%, 0); }
-      to   { opacity: 0; transform: translate(-50%, -20px); }
-    }
-    #v2-toast { animation: slideDownFade .5s ease forwards; }
-    #v2-toast.hide { animation: slideUpFade .4s ease forwards; }
-
     .hero-gradient-text {
       background: linear-gradient(90deg, #22c55e, #86efac, #22c55e);
       background-size: 200% auto;
@@ -66,7 +56,7 @@
     @keyframes shine { to { background-position: 200% center; } }
   </style>
 </head>
-<body class="bg-da-dark text-white min-h-screen overflow-x-hidden antialiased">
+<body class="bg-da-dark text-white min-h-screen overflow-x-hidden antialiased selection:bg-da-green selection:text-black">
 
   <!-- Ambient background -->
   <div class="fixed inset-0 grid-bg pointer-events-none"></div>
@@ -74,27 +64,11 @@
   <div class="fixed top-1/3 -right-32 w-[380px] h-[380px] bg-da-green/10 rounded-full blur-[110px] pointer-events-none blob-b"></div>
   <div class="fixed inset-0 bg-gradient-to-b from-transparent via-transparent to-da-dark/90 pointer-events-none"></div>
 
-  <!-- v2 update toast -->
-  <div id="v2-toast" class="hidden fixed top-5 left-1/2 -translate-x-1/2 z-[70] w-[calc(100%-2rem)] max-w-sm">
-    <div class="flex items-center gap-3 bg-da-card/95 border border-da-green/40 backdrop-blur-md rounded-full pl-2 pr-3 py-2 shadow-green-glow">
-      <div class="w-8 h-8 rounded-full bg-da-green flex items-center justify-center flex-shrink-0">
-        <svg class="w-4 h-4 text-black" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2L3 7v11h4v-6h6v6h4V7l-7-5z"/></svg>
-      </div>
-      <div class="flex-1 min-w-0">
-        <p class="text-xs font-bold leading-tight">Updated to v2</p>
-        <p class="text-[11px] text-da-muted leading-tight">New look, same club. Check it out.</p>
-      </div>
-      <button id="v2-toast-close" class="text-da-muted hover:text-white p-1 flex-shrink-0">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </button>
-    </div>
-  </div>
-
   <!-- ================= HEADER ================= -->
   <header class="relative z-30 flex items-center justify-between px-5 sm:px-8 lg:px-14 py-5">
     <div class="flex items-center gap-3.5">
-      <div class="w-11 h-11 rounded-full bg-white flex items-center justify-center overflow-hidden shadow-md ring-2 ring-da-green/30">
-        <img src="/assets/crest.PNG" alt="DA United Crest" class="w-full h-full object-cover"
+      <div class="w-11 h-11 rounded-2xl bg-white flex items-center justify-center overflow-hidden shadow-md ring-2 ring-da-green/30">
+        <img src="/assets/crest.png" alt="DA United Crest" class="w-full h-full object-cover"
              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
         <div class="hidden w-full h-full items-center justify-center text-[10px] font-black text-black">DA</div>
       </div>
@@ -103,9 +77,12 @@
         <div class="text-[10px] tracking-[0.18em] text-da-green uppercase mt-1 font-medium">One Team · One Dream</div>
       </div>
     </div>
-    <span class="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-bold tracking-widest text-da-green uppercase border border-da-green/30 bg-da-green/10 px-3 py-1.5 rounded-full">
-      <span class="w-1.5 h-1.5 rounded-full bg-da-green"></span> v2
-    </span>
+    <div class="flex items-center gap-3">
+      <button onclick="openWelcomeModal()" class="inline-flex items-center gap-2 text-xs font-bold tracking-wider text-da-green uppercase border border-da-green/30 bg-da-green/10 px-4 py-2 rounded-full hover:bg-da-green/20 transition-all shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        What's New in v2
+      </button>
+    </div>
   </header>
 
   <!-- ================= MAIN ================= -->
@@ -125,37 +102,34 @@
           One strength.
         </h1>
 
-        <p class="text-da-muted text-[15px] sm:text-base leading-relaxed mb-10 max-w-md mx-auto lg:mx-0">
+        <p class="text-da-muted text-[15px] sm:text-base leading-relaxed mb-10 max-w-md mx-auto lg:mx-0 font-medium">
           The official digital home of DA United. Follow the squad, live every match, read the stories, and stay close to the club wherever you are.
         </p>
 
         <div class="flex flex-col sm:flex-row items-center lg:items-start gap-3 justify-center lg:justify-start">
           <a href="dashboard.html"
-             class="group inline-flex items-center gap-2.5 bg-da-green hover:bg-green-400 text-black font-semibold px-8 py-3.5 rounded-full transition-all duration-300 shadow-green-glow hover:shadow-[0_0_50px_-8px_rgba(34,197,94,0.5)] hover:-translate-y-0.5">
+             class="group inline-flex items-center gap-2.5 bg-da-green hover:bg-green-400 text-black font-extrabold px-8 py-3.5 rounded-full transition-all duration-300 shadow-green-glow hover:shadow-[0_0_50px_-8px_rgba(34,197,94,0.5)] hover:-translate-y-0.5">
             Dashboard
             <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
             </svg>
           </a>
-          <a href="matches.html"
-             class="inline-flex items-center gap-2 border border-da-border hover:border-da-green/40 hover:bg-white/5 text-white font-medium px-6 py-3.5 rounded-full transition-all duration-300">
-            See results
-          </a>
+         
         </div>
 
         <!-- Quick stats strip -->
         <div class="grid grid-cols-3 gap-3 mt-10 max-w-sm mx-auto lg:mx-0">
-          <div class="bg-da-card/60 border border-da-border rounded-xl py-3 text-center">
-            <div class="text-xl font-extrabold text-da-green">5</div>
-            <div class="text-[10px] text-da-muted uppercase tracking-wider mt-0.5">Wins</div>
+          <div class="bg-da-card border border-da-border rounded-2xl py-3.5 text-center shadow-sm">
+            <div class="text-xl font-black text-da-green">5</div>
+            <div class="text-[10px] font-bold text-da-muted uppercase tracking-wider mt-0.5">Wins</div>
           </div>
-          <div class="bg-da-card/60 border border-da-border rounded-xl py-3 text-center">
-            <div class="text-xl font-extrabold">16</div>
-            <div class="text-[10px] text-da-muted uppercase tracking-wider mt-0.5">Goals</div>
+          <div class="bg-da-card border border-da-border rounded-2xl py-3.5 text-center shadow-sm">
+            <div class="text-xl font-black text-white">16</div>
+            <div class="text-[10px] font-bold text-da-muted uppercase tracking-wider mt-0.5">Goals</div>
           </div>
-          <div class="bg-da-card/60 border border-da-border rounded-xl py-3 text-center">
-            <div class="text-xl font-extrabold text-red-400">1</div>
-            <div class="text-[10px] text-da-muted uppercase tracking-wider mt-0.5">Loss</div>
+          <div class="bg-da-card border border-da-border rounded-2xl py-3.5 text-center shadow-sm">
+            <div class="text-xl font-black text-red-400">1</div>
+            <div class="text-[10px] font-bold text-da-muted uppercase tracking-wider mt-0.5">Loss</div>
           </div>
         </div>
       </div>
@@ -166,32 +140,32 @@
           <div class="absolute -top-20 -right-20 w-48 h-48 bg-da-green/10 rounded-full blur-3xl pointer-events-none"></div>
 
           <div class="relative flex items-center justify-between mb-6">
-            <span class="text-[10px] tracking-[0.2em] text-da-muted uppercase font-medium">The Crest Means More</span>
+            <span class="text-[10px] tracking-[0.2em] text-da-muted uppercase font-bold">The Crest Means More</span>
             <svg class="w-5 h-5 text-da-green" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2L9 8H3l4.5 4.5L5 21l7-4.5L19 21l-2.5-8.5L21 8h-6L12 2z"/>
             </svg>
           </div>
 
-          <div class="relative bg-white rounded-2xl p-5 mb-6 flex items-center justify-center aspect-square ring-1 ring-da-green/20">
+          <div class="relative bg-da-dark rounded-2xl p-5 mb-6 flex items-center justify-center aspect-square ring-1 ring-da-border">
             <img
-              src="/assets/crest.PNG"
+              src="/assets/crest.png"
               alt="DA United Official Crest"
               class="w-full h-full object-contain max-h-[220px]"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
             />
-            <div class="hidden w-full h-full flex-col items-center justify-center text-black">
+            <div class="hidden w-full h-full flex-col items-center justify-center text-white">
               <div class="text-5xl font-black tracking-tighter">DA</div>
-              <div class="text-xs font-semibold tracking-widest mt-1">UNITED FC</div>
+              <div class="text-xs font-bold tracking-widest mt-1 text-da-green">UNITED FC</div>
             </div>
           </div>
 
           <div class="relative">
-            <h2 class="text-2xl font-bold mb-1 tracking-tight">DA United</h2>
-            <p class="text-da-muted text-sm mb-5">Built for the people who believe.</p>
+            <h2 class="text-2xl font-black mb-1 tracking-tight">DA United</h2>
+            <p class="text-da-muted text-sm mb-5 font-medium">Built for the people who believe.</p>
             <div class="h-px bg-da-border mb-4"></div>
             <div class="flex items-center justify-between">
-              <span class="text-[11px] text-da-muted">Season record</span>
-              <span class="text-da-green text-xs font-semibold tracking-widest">5W · 0D · 1L</span>
+              <span class="text-[11px] font-medium text-da-muted">Season record</span>
+              <span class="text-da-green text-xs font-bold tracking-widest">5W · 0D · 1L</span>
             </div>
           </div>
         </div>
@@ -199,14 +173,126 @@
     </div>
   </main>
 
+  <!-- ================= WELCOME / UPDATES CAROUSEL MODAL ================= -->
+  <div id="welcome-carousel-modal" class="fixed inset-0 z-[100] hidden">
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-md transition-opacity" onclick="closeWelcomeModal()"></div>
+    
+    <div class="absolute inset-0 flex items-center justify-center p-4 sm:p-6">
+      <div class="relative bg-da-card border border-da-border rounded-3xl max-w-xl w-full overflow-hidden flex flex-col shadow-2xl">
+        
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between px-6 py-5 border-b border-da-border bg-da-sidebar">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-da-green/10 border border-da-green/20 flex items-center justify-center text-da-green">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+            </div>
+            <div>
+              <h3 class="text-sm font-black tracking-wide text-white">DA UNITED HUB</h3>
+              <p class="text-[10px] font-bold text-da-green uppercase tracking-wider">What's New in v2 Release</p>
+            </div>
+          </div>
+          <button onclick="closeWelcomeModal()" class="p-2 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- Carousel Slides Body -->
+        <div class="p-6 sm:p-8 min-h-[320px] flex flex-col justify-between">
+          
+          <!-- Slide 1 -->
+          <div class="carousel-slide space-y-4" data-slide="0">
+            <div class="w-12 h-12 rounded-2xl bg-da-green/10 border border-da-green/20 flex items-center justify-center text-da-green mb-4">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            </div>
+            <span class="text-[10px] font-extrabold tracking-widest text-da-green uppercase bg-da-green/10 px-3 py-1 rounded-full">Update 01 / 05</span>
+            <h4 class="text-2xl font-black text-white tracking-tight">Unified Design & Dark Aesthetic</h4>
+            <p class="text-da-muted text-sm sm:text-base leading-relaxed font-medium">
+              We've completely overhauled the Supporter Hub with a stunning dark-mode design system, ambient green glowing accents, and gorgeous rounded-3xl container cards across every single page.
+            </p>
+          </div>
+
+          <!-- Slide 2 -->
+          <div class="carousel-slide space-y-4 hidden" data-slide="1">
+            <div class="w-12 h-12 rounded-2xl bg-da-green/10 border border-da-green/20 flex items-center justify-center text-da-green mb-4">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <span class="text-[10px] font-extrabold tracking-widest text-da-green uppercase bg-da-green/10 px-3 py-1 rounded-full">Update 02 / 05</span>
+            <h4 class="text-2xl font-black text-white tracking-tight">Live Match Center & Telemetry</h4>
+            <p class="text-da-muted text-sm sm:text-base leading-relaxed font-medium">
+              Follow matchdays like never before. The Live hub features real-time match timelines, possession meters, shot trackers, and live goal notifications updated instantly from the Admin control panel.
+            </p>
+          </div>
+
+          <!-- Slide 3 -->
+          <div class="carousel-slide space-y-4 hidden" data-slide="2">
+            <div class="w-12 h-12 rounded-2xl bg-da-green/10 border border-da-green/20 flex items-center justify-center text-da-green mb-4">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            </div>
+            <span class="text-[10px] font-extrabold tracking-widest text-da-green uppercase bg-da-green/10 px-3 py-1 rounded-full">Update 03 / 05</span>
+            <h4 class="text-2xl font-black text-white tracking-tight">Advanced Squad & Formations</h4>
+            <p class="text-da-muted text-sm sm:text-base leading-relaxed font-medium">
+              Explore the official team sheet with interactive formation layouts. View player profiles, kit numbers, positions, and detailed individual attributes managed directly by the club.
+            </p>
+          </div>
+
+          <!-- Slide 4 -->
+          <div class="carousel-slide space-y-4 hidden" data-slide="3">
+            <div class="w-12 h-12 rounded-2xl bg-da-green/10 border border-da-green/20 flex items-center justify-center text-da-green mb-4">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9 9 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
+            </div>
+            <span class="text-[10px] font-extrabold tracking-widest text-da-green uppercase bg-da-green/10 px-3 py-1 rounded-full">Update 04 / 05</span>
+            <h4 class="text-2xl font-black text-white tracking-tight">Player Ratings & Match Stats</h4>
+            <p class="text-da-muted text-sm sm:text-base leading-relaxed font-medium">
+              See how every player performed on matchday with community and staff ratings, tactical team statistics, and comprehensive goal & assist leaderboards.
+            </p>
+          </div>
+
+          <!-- Slide 5 -->
+          <div class="carousel-slide space-y-4 hidden" data-slide="4">
+            <div class="w-12 h-12 rounded-2xl bg-da-green/10 border border-da-green/20 flex items-center justify-center text-da-green mb-4">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>
+            </div>
+            <span class="text-[10px] font-extrabold tracking-widest text-da-green uppercase bg-da-green/10 px-3 py-1 rounded-full">Update 05 / 05</span>
+            <h4 class="text-2xl font-black text-white tracking-tight">Stories, DA TV & Predictions</h4>
+            <p class="text-da-muted text-sm sm:text-base leading-relaxed font-medium">
+              Dive into club news bulletins, injury updates, video content on DA TV, match predictions, training logs, and photo galleries. Everything you need as a DA United supporter!
+            </p>
+          </div>
+
+          <!-- Carousel Controls & Indicators -->
+          <div class="flex items-center justify-between pt-8 mt-6 border-t border-da-border">
+            <div class="flex items-center gap-1.5" id="carousel-dots">
+              <button onclick="goToSlide(0)" class="w-6 h-2 rounded-full bg-da-green transition-all dot-indicator" data-dot="0"></button>
+              <button onclick="goToSlide(1)" class="w-2 h-2 rounded-full bg-da-border transition-all dot-indicator" data-dot="1"></button>
+              <button onclick="goToSlide(2)" class="w-2 h-2 rounded-full bg-da-border transition-all dot-indicator" data-dot="2"></button>
+              <button onclick="goToSlide(3)" class="w-2 h-2 rounded-full bg-da-border transition-all dot-indicator" data-dot="3"></button>
+              <button onclick="goToSlide(4)" class="w-2 h-2 rounded-full bg-da-border transition-all dot-indicator" data-dot="4"></button>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button onclick="prevSlide()" class="p-2.5 rounded-xl bg-da-dark border border-da-border hover:border-da-green/40 text-gray-300 hover:text-white transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+              </button>
+              <button onclick="nextSlide()" class="px-4 py-2.5 rounded-xl bg-da-green hover:bg-green-400 text-black font-extrabold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-md">
+                <span id="next-btn-text">Next</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ================= FOOTER ================= -->
-  <footer class="fixed bottom-0 left-0 right-0 z-30 border-t border-da-border/50 bg-da-dark/85 backdrop-blur-md">
+  <footer class="fixed bottom-0 left-0 right-0 z-30 border-t border-da-border/80 bg-da-dark/90 backdrop-blur-md">
     <div class="max-w-6xl mx-auto px-5 sm:px-8 lg:px-14 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
-      <div class="text-da-muted text-[13px]">Powered By Tech Nxxt Company</div>
+      <div class="text-da-muted text-[13px] font-medium">Powered By Tech Nxxt Company</div>
       <div class="flex items-center gap-5">
-        <span class="tracking-[0.2em] text-[10px] uppercase text-da-muted font-medium">Made for Matchday</span>
+        <span class="tracking-[0.2em] text-[10px] uppercase text-da-muted font-bold hidden sm:inline">Made for Matchday</span>
         <button id="da-assist-btn"
-                class="group inline-flex items-center gap-2 bg-da-green hover:bg-green-400 text-black font-semibold px-4 py-2 rounded-full text-sm transition-all duration-300 shadow-lg shadow-da-green/20 hover:shadow-da-green/40">
+                class="group inline-flex items-center gap-2 bg-da-green hover:bg-green-400 text-black font-extrabold px-5 py-2.5 rounded-full text-xs shadow-lg shadow-da-green/25 transition-all duration-300 transform hover:scale-105">
           <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
           </svg>
@@ -218,50 +304,50 @@
 
   <!-- ================= DA ASSIST MODAL ================= -->
   <div id="da-assist-modal" class="fixed inset-0 z-50 hidden">
-    <div class="absolute inset-0 bg-black/75 backdrop-blur-sm" id="modal-backdrop"></div>
-    <div class="absolute bottom-5 right-5 sm:bottom-6 sm:right-6 w-[calc(100%-2.5rem)] max-w-md">
-      <div class="bg-da-card border border-da-border rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[75vh]">
-        <div class="flex items-center justify-between px-5 py-4 border-b border-da-border bg-[#0d160d]">
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-md" id="modal-backdrop"></div>
+    <div class="absolute bottom-6 right-6 sm:bottom-8 sm:right-8 w-[calc(100%-2.5rem)] max-w-md z-10">
+      <div class="bg-da-card border border-da-border rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+        <div class="flex items-center justify-between px-6 py-5 border-b border-da-border bg-da-sidebar">
           <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-full bg-da-green/15 flex items-center justify-center">
+            <div class="w-10 h-10 rounded-2xl bg-da-green/10 border border-da-green/20 flex items-center justify-center">
               <svg class="w-5 h-5 text-da-green" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
               </svg>
             </div>
             <div>
-              <div class="font-semibold text-sm">DA Assist</div>
-              <div class="text-[11px] text-da-green font-medium">Official Club AI</div>
+              <div class="font-bold text-sm text-white">DA Assist</div>
+              <div class="text-[10px] text-da-green font-bold tracking-wider uppercase">Official Club AI</div>
             </div>
           </div>
-          <button id="close-modal" class="text-da-muted hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5">
+          <button id="close-modal" class="text-da-muted hover:text-white transition-colors p-2 rounded-xl hover:bg-white/10">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
           </button>
         </div>
 
-        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 min-h-[260px] max-h-[360px]">
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-5 space-y-4 min-h-[280px] max-h-[380px]">
           <div class="flex gap-3">
-            <div class="w-7 h-7 rounded-full bg-da-green/15 flex-shrink-0 flex items-center justify-center mt-0.5">
-              <span class="text-da-green text-[10px] font-bold">DA</span>
+            <div class="w-8 h-8 rounded-xl bg-da-green/15 flex-shrink-0 flex items-center justify-center mt-0.5 border border-da-green/20">
+              <span class="text-da-green text-[10px] font-black">DA</span>
             </div>
-            <div class="bg-[#152015] border border-da-border/60 rounded-2xl rounded-tl-md px-4 py-2.5 text-sm text-gray-200 max-w-[85%] leading-relaxed">
+            <div class="bg-da-dark border border-da-border rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-gray-200 max-w-[85%] leading-relaxed shadow-sm">
               Hello! I'm DA Assist — the official AI of DA United. Ask me anything about the club, the squad, or our story.
             </div>
           </div>
         </div>
 
-        <div class="p-4 border-t border-da-border bg-[#0d160d]">
+        <div class="p-4 border-t border-da-border bg-da-sidebar">
           <form id="chat-form" class="flex gap-2.5">
             <input
               type="text"
               id="chat-input"
               placeholder="Ask about DA United..."
-              class="flex-1 bg-da-dark border border-da-border rounded-full px-4 py-2.5 text-sm text-white placeholder-da-muted focus:outline-none focus:border-da-green/50 focus:ring-1 focus:ring-da-green/30 transition-all"
+              class="flex-1 bg-da-dark border border-da-border rounded-full px-5 py-3 text-sm text-white placeholder-da-muted focus:outline-none focus:border-da-green/50 focus:ring-1 focus:ring-da-green/30 transition-all"
               autocomplete="off"
             />
             <button type="submit"
-                    class="bg-da-green hover:bg-green-400 text-black rounded-full w-10 h-10 flex items-center justify-center transition-all duration-200 flex-shrink-0 hover:scale-105 active:scale-95">
+                    class="bg-da-green hover:bg-green-400 text-black rounded-full w-11 h-11 flex items-center justify-center transition-all duration-200 flex-shrink-0 hover:scale-105 active:scale-95 shadow-md">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
               </svg>
@@ -272,28 +358,74 @@
     </div>
   </div>
 
+  <!-- Carousel Script & Auto-Popup Handler -->
   <script>
-    (function () {
-      const TOAST_KEY = "da_v2_toast_shown";
-      const toast = document.getElementById("v2-toast");
-      const closeBtn = document.getElementById("v2-toast-close");
-      if (!toast) return;
+    let currentSlide = 0;
+    const totalSlides = 5;
 
-      if (!localStorage.getItem(TOAST_KEY)) {
-        toast.classList.remove("hidden");
-        setTimeout(() => {
-          if (!toast.classList.contains("hide")) hideToast();
-        }, 6000);
+    function openWelcomeModal() {
+      const modal = document.getElementById('welcome-carousel-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        showSlide(0);
       }
+    }
 
-      function hideToast() {
-        toast.classList.add("hide");
-        localStorage.setItem(TOAST_KEY, "true");
-        setTimeout(() => toast.classList.add("hidden"), 400);
+    function closeWelcomeModal() {
+      const modal = document.getElementById('welcome-carousel-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function showSlide(index) {
+      currentSlide = index;
+      document.querySelectorAll('.carousel-slide').forEach((slide, idx) => {
+        if (idx === index) {
+          slide.classList.remove('hidden');
+        } else {
+          slide.classList.add('hidden');
+        }
+      });
+
+      document.querySelectorAll('.dot-indicator').forEach((dot, idx) => {
+        if (idx === index) {
+          dot.classList.remove('w-2', 'bg-da-border');
+          dot.classList.add('w-6', 'bg-da-green');
+        } else {
+          dot.classList.remove('w-6', 'bg-da-green');
+          dot.classList.add('w-2', 'bg-da-border');
+        }
+      });
+
+      const nextBtnText = document.getElementById('next-btn-text');
+      if (nextBtnText) {
+        nextBtnText.textContent = currentSlide === totalSlides - 1 ? 'Got it!' : 'Next';
       }
+    }
 
-      if (closeBtn) closeBtn.addEventListener("click", hideToast);
-    })();
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        showSlide(currentSlide + 1);
+      } else {
+        closeWelcomeModal();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        showSlide(currentSlide - 1);
+      }
+    }
+
+    function goToSlide(index) {
+      showSlide(index);
+    }
+
+    // Automatically pop up modal on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        openWelcomeModal();
+      }, 400);
+    });
   </script>
 
   <script src="/js/main.js"></script>
