@@ -20,7 +20,7 @@ const APP_VERSION = "v2";
 })();
 
 // ----- VAPID Public Key -----
-const vapidPublicKey = 'BAl4qRWELwQHmC9P2RpigIUYaVom5hlwzaPDfoGwuyVzhFg6V7nFn5GHZ7IziUM-yPtCU1Vold-dNY3T3Oq1vqI';
+const vapidPublicKey = 'BDqyvHgDjrXaOrUVHZn398DEaMIpzslX4_Mn_qBpiRuv1ganSrc3er03hhNNuUunoCoK0oBbnmv9J3V2tHMhHuM';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
