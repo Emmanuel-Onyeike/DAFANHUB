@@ -1,5 +1,5 @@
 // ======================
-// DA United – Settings
+// DA United – Settings (+ in-app Update)
 // ======================
 
 const sidebar = document.getElementById("sidebar");
@@ -57,10 +57,8 @@ function isNotificationsEnabled() {
     ("Notification" in window ? Notification.permission === "granted" : false);
 }
 
-// Init toggle from stored state
 setToggleOn(isNotificationsEnabled());
 
-// Show permission card if not fully granted
 if (permissionCard) {
   if (!isNotificationsEnabled()) {
     permissionCard.classList.remove("hidden");
@@ -98,7 +96,6 @@ if (toggleBtn) {
   toggleBtn.addEventListener("click", async () => {
     const currentlyOn = toggleBtn.getAttribute("aria-pressed") === "true";
     if (currentlyOn) {
-      // Turn off preference (browser permission stays; we just stop treating as enabled)
       localStorage.setItem("da_notifications_enabled", "false");
       setToggleOn(false);
       if (permissionCard) permissionCard.classList.remove("hidden");
@@ -179,3 +176,110 @@ window.addEventListener("appinstalled", () => {
     btnInstall.disabled = true;
   }
 });
+
+// ===================== IN-APP UPDATE =====================
+// For the installed PWA: loading bar -> 100% -> white screen ->
+// "Enjoy the view" -> 5s -> redirect to the dashboard with the
+// version flag set, so the black update-gate never shows again
+// and the new UI is right there waiting.
+const APP_VERSION = "v2";
+
+(function () {
+  const btnUpdate = document.getElementById("btn-update");
+  if (!btnUpdate) return;
+
+  const style = document.createElement("style");
+  style.textContent = `
+    #da-update-modal { position: fixed; inset: 0; z-index: 9999; display: none; }
+    #da-update-modal.show { display: block; }
+    #da-update-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.82); backdrop-filter: blur(4px); }
+    #da-update-box {
+      position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+      width: calc(100% - 2rem); max-width: 380px;
+      background: #0c140c; border: 1px solid #1a2a1a; border-radius: 1.25rem;
+      padding: 1.75rem; text-align: center; color: #fff;
+    }
+    #da-update-bar-track { height: 8px; border-radius: 999px; background: #1a2a1a; overflow: hidden; margin-top: 1.25rem; }
+    #da-update-bar { height: 100%; width: 0%; background: #22c55e; border-radius: 999px; transition: width .18s linear; }
+    #da-update-pct { font-size: .75rem; color: #6b7c6b; margin-top: .6rem; }
+    #da-update-white {
+      position: fixed; inset: 0; z-index: 10000; background: #fff;
+      display: none; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity .35s ease;
+    }
+    #da-update-white.show { display: flex; opacity: 1; }
+    #da-update-white span {
+      color: #050805; font-weight: 800; letter-spacing: -.02em; font-size: 1.5rem;
+      opacity: 0; transform: translateY(8px);
+      transition: opacity .5s ease .25s, transform .5s ease .25s;
+    }
+    #da-update-white.reveal span { opacity: 1; transform: translateY(0); }
+  `;
+  document.head.appendChild(style);
+
+  const wrap = document.createElement("div");
+  wrap.innerHTML = `
+    <div id="da-update-modal">
+      <div id="da-update-backdrop"></div>
+      <div id="da-update-box">
+        <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:.35rem;">Updating DA United</h3>
+        <p style="font-size:.8rem;color:#6b7c6b;">Getting the latest version. Don't close the app.</p>
+        <div id="da-update-bar-track"><div id="da-update-bar"></div></div>
+        <div id="da-update-pct">0%</div>
+      </div>
+    </div>
+    <div id="da-update-white"><span>Enjoy the view</span></div>
+  `;
+  document.body.appendChild(wrap);
+
+  const modal = document.getElementById("da-update-modal");
+  const bar = document.getElementById("da-update-bar");
+  const pct = document.getElementById("da-update-pct");
+  const white = document.getElementById("da-update-white");
+
+  async function clearAppCaches() {
+    try {
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+      if ("serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.update().catch(() => r.unregister())));
+      }
+    } catch (e) {
+      console.warn("Cache clear issue:", e);
+    }
+  }
+
+  btnUpdate.addEventListener("click", () => {
+    btnUpdate.disabled = true;
+    modal.classList.add("show");
+
+    const work = clearAppCaches(); // real work runs in the background
+
+    let p = 0;
+    const timer = setInterval(() => {
+      p += Math.random() * 14 + 8;
+      if (p >= 100) p = 100;
+      bar.style.width = p + "%";
+      pct.textContent = Math.floor(p) + "%";
+
+      if (p === 100) {
+        clearInterval(timer);
+        setTimeout(async () => {
+          await work;
+
+          modal.classList.remove("show");
+          white.classList.add("show");
+          requestAnimationFrame(() => white.classList.add("reveal"));
+
+          setTimeout(() => {
+            localStorage.setItem("da_app_version", APP_VERSION);
+            window.location.href = "/dashboard.html";
+          }, 5000);
+        }, 300);
+      }
+    }, 130);
+  });
+})();

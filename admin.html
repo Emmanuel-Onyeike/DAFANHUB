@@ -80,6 +80,7 @@
         <button data-tab="fixtures" class="admin-tab active px-4 py-2 rounded-full text-sm font-medium bg-da-green text-black">Fixtures</button>
         <button data-tab="matches" class="admin-tab px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-gray-300 hover:bg-white/10">Matches</button>
         <button data-tab="squad" class="admin-tab px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-gray-300 hover:bg-white/10">Squad</button>
+        <button data-tab="stats" class="admin-tab px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-gray-300 hover:bg-white/10">Stats</button>
         <button data-tab="stories" class="admin-tab px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-gray-300 hover:bg-white/10">Stories</button>
         <button data-tab="gallery" class="admin-tab px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-gray-300 hover:bg-white/10">Gallery</button>
         <button data-tab="live" class="admin-tab px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-gray-300 hover:bg-white/10">Live</button>
@@ -135,7 +136,7 @@
       <!-- ===================== MATCHES ===================== -->
       <div id="tab-matches" class="admin-panel hidden">
         <h2 class="text-xl font-bold mb-5">Manage Matches & Results</h2>
-
+        
         <div class="bg-da-card border border-da-border rounded-2xl p-5 mb-6">
           <h3 class="font-semibold mb-4" id="match-form-title">Add Match Result</h3>
           <input type="hidden" id="match-edit-id">
@@ -163,6 +164,14 @@
               <label class="text-xs text-da-muted block mb-1">Competition</label>
               <input type="text" id="match-comp" value="Club Friendlies" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
             </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Date</label>
+              <input type="text" id="match-date" placeholder="e.g. Sat 20 Sep" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Time</label>
+              <input type="text" id="match-time" placeholder="e.g. 4:00 PM" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
             <div class="sm:col-span-2">
               <label class="text-xs text-da-muted block mb-1">Match Status</label>
               <select id="match-status" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
@@ -172,72 +181,54 @@
                 <option value="FT">Full Time (FT)</option>
                 <option value="AET">After Extra Time</option>
                 <option value="Penalties">Penalties</option>
-                <option value="Postponed">Interrupted / Postponed</option>
+                <option value="Postponed">Postponed</option>
                 <option value="Cancelled">Cancelled</option>
               </select>
-              <p class="text-[11px] text-da-muted mt-1">
-                Setting this to <strong>Live</strong> and saving puts the match on the Pulse dashboard as "WE ARE LIVE."
-                It stays that way — even as you log goals/cards below — until you change this back to Half Time, Full Time,
-                Interrupted or Cancelled and hit Save Match again.
-              </p>
+              <p class="text-[11px] text-da-muted mt-1">This is what the Matches page actually shows — pick "Live" only while the game is on, then switch to "Full Time" at the end. It no longer just says "Live" forever.</p>
             </div>
           </div>
 
           <!-- Match Events -->
-          <div class="mb-4 border-t border-da-border pt-4">
-            <label class="text-xs text-da-muted block mb-2">Log a Match Event (goals, cards, VAR, etc.) — sent instantly</label>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
+          <div class="mb-4">
+            <label class="text-xs text-da-muted block mb-2">Match Events (Goals, Free Kicks, Cards, Saves, etc.)</label>
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-2">
               <select id="event-type" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
-                <option value="Kick Off">🟢 Kick Off</option>
-                <option value="Goal">⚽ Goal</option>
-                <option value="Golazo">🚀 Screamer / Golazo</option>
-                <option value="Own Goal">😬 Own Goal</option>
-                <option value="Free Kick Goal">🎯 Free Kick Goal</option>
-                <option value="Penalty Scored">✅ Penalty Scored</option>
-                <option value="Penalty Missed">❌ Penalty Missed</option>
-                <option value="Possible Penalty">🤔 Possible Penalty</option>
-                <option value="Possible Free Kick">👀 Possible Free Kick</option>
-                <option value="Assist">🅰️ Assist</option>
-                <option value="Yellow Card">🟨 Yellow Card</option>
-                <option value="Red Card">🟥 Red Card</option>
-                <option value="Substitution">🔄 Substitution</option>
-                <option value="VAR Check">📺 VAR Check</option>
-                <option value="Goal Disallowed">❌ Goal Disallowed (VAR)</option>
-                <option value="Offside">🚩 Offside</option>
-                <option value="Injury">🩹 Injury</option>
-                <option value="HT">⏸️ Half Time</option>
-                <option value="FT">🏁 Full Time</option>
+                <option value="Goal">Goal</option>
+                <option value="Own Goal">Own Goal</option>
+                <option value="Assist">Assist</option>
+                <option value="Yellow Card">Yellow Card</option>
+                <option value="Red Card">Red Card</option>
+                <option value="Substitution">Substitution</option>
+                <option value="Free Kick">Free Kick</option>
+                <option value="Corner">Corner</option>
+                <option value="Save">Save (GK)</option>
+                <option value="HT">Half Time</option>
+                <option value="FT">Full Time</option>
+                <option value="VAR">VAR</option>
+                <option value="Offside">Offside</option>
+                <option value="Penalty">Penalty</option>
+                <option value="Penalty Missed">Penalty Missed</option>
+                <option value="Injury">Injury</option>
                 <option value="Other">Other</option>
               </select>
-              <select id="event-side" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
-                <option value="DA United">For DA United</option>
-                <option value="Opponent">For Opponent</option>
+              <select id="event-player" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
+                <option value="">Select player…</option>
+                <option value="__custom__">Other / type name…</option>
               </select>
-              <input type="text" id="event-player" placeholder="Player name" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
-              <input type="text" id="event-minute" placeholder="Min (e.g. 23)" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
-              <input type="text" id="event-detail" placeholder="How? (optional)" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
+              <input type="text" id="event-player-custom" placeholder="Player name" class="hidden bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
+              <input type="text" id="event-minute" placeholder="Min (e.g. 23')" class="bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
               <button type="button" id="btn-add-event" class="bg-white/10 hover:bg-white/15 rounded-xl text-sm font-medium">+ Add Event</button>
             </div>
-            <label class="flex items-center gap-2 text-xs text-da-muted mb-3">
-              <input type="checkbox" id="event-notify" checked class="w-4 h-4 accent-da-green">
-              Push notification instantly when this event is added
-            </label>
-            <div id="events-preview" class="space-y-1 text-sm text-da-muted min-h-[40px] mb-4"></div>
-
-            <label class="text-xs text-da-muted block mb-2">Or type a custom live update (e.g. "A stunning free kick")</label>
-            <div class="flex flex-col sm:flex-row gap-2">
-              <input type="text" id="custom-update-text" placeholder="Type a custom update..." class="flex-1 bg-da-dark border border-da-border rounded-xl px-3 py-2 text-sm">
-              <button type="button" id="btn-push-custom" class="bg-da-green hover:bg-green-400 text-black font-semibold px-4 py-2 rounded-xl text-sm">
-                📢 Push Custom Update
-              </button>
-            </div>
+            <p class="text-[11px] text-da-muted mb-2">Picking a player from your squad is what lets their Goals/Assists/Saves update automatically on the Squad page — no need to edit their stats by hand.</p>
+            <div id="events-preview" class="space-y-1 text-sm text-da-muted min-h-[40px]"></div>
           </div>
 
-          <div class="flex flex-wrap gap-2 border-t border-da-border pt-4">
+          <div class="flex flex-wrap gap-2">
             <button id="btn-save-match" class="bg-da-green hover:bg-green-400 text-black font-semibold px-5 py-2.5 rounded-full text-sm">
               Save Match
+            </button>
+            <button id="btn-full-time" class="bg-white/10 hover:bg-white/15 text-white font-semibold px-5 py-2.5 rounded-full text-sm">
+              Set Full Time & Save
             </button>
             <button id="btn-cancel-match" class="hidden px-5 py-2.5 rounded-full text-sm border border-da-border hover:bg-white/5">Cancel Edit</button>
           </div>
@@ -280,14 +271,29 @@
               <input type="number" id="player-apps" value="0" min="0" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
             </div>
             <div>
-              <label class="text-xs text-da-muted block mb-1">Goals</label>
+              <label class="text-xs text-da-muted block mb-1">Goals <span class="text-da-muted/70">(auto from Matches)</span></label>
               <input type="number" id="player-goals" value="0" min="0" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
             </div>
             <div>
-              <label class="text-xs text-da-muted block mb-1">Assists</label>
+              <label class="text-xs text-da-muted block mb-1">Assists <span class="text-da-muted/70">(auto from Matches)</span></label>
               <input type="number" id="player-assists" value="0" min="0" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
             </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Saves <span class="text-da-muted/70">(GK, auto from Matches)</span></label>
+              <input type="number" id="player-saves" value="0" min="0" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="text-xs text-da-muted block mb-1">Clean Sheets <span class="text-da-muted/70">(GK, auto)</span></label>
+              <input type="number" id="player-clean-sheets" value="0" min="0" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div class="flex items-end">
+              <label class="flex items-center gap-2 text-sm bg-da-dark border border-da-border rounded-xl px-4 py-2.5 w-full cursor-pointer">
+                <input type="checkbox" id="player-available" checked class="w-4 h-4">
+                Available for selection
+              </label>
+            </div>
           </div>
+          <p class="text-[11px] text-da-muted mb-3">Goals, Assists, Saves and Clean Sheets recalculate automatically from every Full Time match's events — you can still nudge a number by hand here if needed, but it will be overwritten next time a match is saved.</p>
           <div class="flex flex-wrap gap-2">
             <button id="btn-save-player" class="bg-da-green hover:bg-green-400 text-black font-semibold px-5 py-2.5 rounded-full text-sm">Save Player</button>
             <button id="btn-cancel-player" class="hidden px-5 py-2.5 rounded-full text-sm border border-da-border hover:bg-white/5">Cancel Edit</button>
@@ -296,6 +302,68 @@
 
         <div id="players-list" class="space-y-3"></div>
       </div>
+
+
+      <!-- ===================== STATS ===================== -->
+<div id="tab-stats" class="admin-panel hidden">
+  <h2 class="text-xl font-bold mb-5">Manage Stats</h2>
+
+  <!-- Formation / Team News -->
+  <div class="bg-da-card border border-da-border rounded-2xl p-5 mb-6">
+    <h3 class="font-semibold mb-4">Formation & Selection</h3>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+      <div>
+        <label class="text-xs text-da-muted block mb-1">Formation</label>
+        <input type="text" id="stats-formation" value="4-3-3" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+      </div>
+      <div>
+        <label class="text-xs text-da-muted block mb-1">Notes</label>
+        <input type="text" id="stats-notes" placeholder="Team news / tactical notes" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+      </div>
+      <div class="sm:col-span-2">
+        <label class="text-xs text-da-muted block mb-1">Starting XI (comma separated names)</label>
+        <textarea id="stats-xi" rows="2" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm" placeholder="Player 1, Player 2, ..."></textarea>
+      </div>
+      <div class="sm:col-span-2">
+        <label class="text-xs text-da-muted block mb-1">Substitutes (comma separated)</label>
+        <textarea id="stats-subs" rows="2" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm"></textarea>
+      </div>
+    </div>
+    <button id="btn-save-formation" class="bg-da-green hover:bg-green-400 text-black font-semibold px-5 py-2.5 rounded-full text-sm">
+      Save Formation
+    </button>
+  </div>
+
+  <!-- Player Attributes -->
+  <div class="bg-da-card border border-da-border rounded-2xl p-5 mb-6">
+    <h3 class="font-semibold mb-4">Player Attributes</h3>
+    <div id="attrs-list" class="space-y-4"></div>
+  </div>
+
+  <!-- Match Ratings -->
+  <div class="bg-da-card border border-da-border rounded-2xl p-5">
+    <h3 class="font-semibold mb-4">In-Game Ratings</h3>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+      <div>
+        <label class="text-xs text-da-muted block mb-1">Match</label>
+        <select id="rating-match" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm"></select>
+      </div>
+      <div>
+        <label class="text-xs text-da-muted block mb-1">Player</label>
+        <select id="rating-player" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm"></select>
+      </div>
+      <div>
+        <label class="text-xs text-da-muted block mb-1">Rating (0–10)</label>
+        <input type="number" id="rating-value" min="0" max="10" step="0.1" class="w-full bg-da-dark border border-da-border rounded-xl px-4 py-2.5 text-sm">
+      </div>
+    </div>
+    <button id="btn-save-rating" class="bg-da-green hover:bg-green-400 text-black font-semibold px-5 py-2.5 rounded-full text-sm">
+      Add Rating
+    </button>
+    <div id="ratings-admin-list" class="mt-5 space-y-2"></div>
+  </div>
+</div>
+
 
       <!-- ===================== STORIES ===================== -->
       <div id="tab-stories" class="admin-panel hidden">

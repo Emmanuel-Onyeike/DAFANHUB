@@ -1,5 +1,5 @@
 // ======================
-// DA United – Admin Panel (Full CRUD + Live Match Events + Push)
+// DA United – Admin Panel (Full CRUD + Match Events + Push)
 // ======================
 
 const ADMIN_PASSWORD = "123789";
@@ -80,197 +80,43 @@ async function sendPushNotification(title, body, url = "/dashboard.html") {
       body: JSON.stringify({ title, body, url })
     });
 
-    const raw = await res.text();
-    let data;
-    try {
-      data = raw ? JSON.parse(raw) : null;
-    } catch {
-      console.error(`Push endpoint returned non-JSON (status ${res.status}):`, raw);
-      return { ok: false, status: res.status, raw };
-    }
-
-    if (!res.ok) {
-      console.error(`Push endpoint error (status ${res.status}):`, data);
-    } else {
-      console.log("Push result:", data);
-    }
+    const data = await res.json();
+    console.log("Push result:", data);
     return data;
   } catch (err) {
     console.error("Failed to send push:", err);
   }
 }
 
-// ===================== HOME/AWAY LABELING =====================
-// DA United's own venue field decides who is "Home" and who is "Away"
-// in the copy shown to supporters ("Home scores" / "Away gets a booking").
-function sideLabels(venue) {
-  const daIsHome = (venue || "Home") !== "Away";
-  return {
-    da: daIsHome ? "Home" : "Away",
-    opp: daIsHome ? "Away" : "Home"
-  };
-}
-
-function labelForSide(eventSide, venue) {
-  const labels = sideLabels(venue);
-  return eventSide === "Opponent" ? labels.opp : labels.da;
-}
-
-// ===================== MATCH EVENT → NOTIFICATION COPY =====================
-function buildEventNotification(e, opponent, scoreHome, scoreAway, venue) {
-  const min = e.minute ? `${e.minute}'` : "";
-  const player = (e.player || "").trim();
-  const detail = (e.detail || "").trim();
-  const scoreLine = `DA United ${scoreHome ?? 0} - ${scoreAway ?? 0} ${opponent || "Opponent"}`.trim();
-  const minSuffix = min ? ` ${min}` : "";
-  const detailSuffix = detail ? ` (${detail})` : "";
-  const side = labelForSide(e.side, venue);
-
-  switch (e.type) {
-    case "Kick Off":
-      return { title: "🟢 Kick Off!", body: `${scoreLine} is underway.` };
-
-    case "Goal":
-      return {
-        title: "⚽ GOALLLLLLLLL!",
-        body: `${player || "DA United"} scores${minSuffix}${detailSuffix}! ${side} scores. ${scoreLine}`
-      };
-
-    case "Golazo":
-      return {
-        title: "🚀 A STUNNING GOAL!",
-        body: `${player || "DA United"} with an absolute screamer${minSuffix}${detailSuffix}! ${side} scores. ${scoreLine}`
-      };
-
-    case "Own Goal":
-      return {
-        title: "😬 Own Goal",
-        body: `${player ? player + " (o.g.)" : "Own goal"}${minSuffix}${detailSuffix} — ${scoreLine}`
-      };
-
-    case "Free Kick Goal":
-      return {
-        title: "🎯 A STUNNING FREE KICK!",
-        body: `${player || "DA United"} curls it in${minSuffix}! ${side} scores. ${scoreLine}`
-      };
-
-    case "Penalty Scored":
-      return {
-        title: "✅ Penalty Scored!",
-        body: `${player || "DA United"} sends the keeper the wrong way${minSuffix}. ${side} scores. ${scoreLine}`
-      };
-
-    case "Penalty Missed":
-      return {
-        title: "❌ Penalty Missed",
-        body: `${player || "DA United"} can't convert${minSuffix}.`
-      };
-
-    case "Possible Penalty":
-      return {
-        title: "🤔 What can this be?",
-        body: `Shout for a penalty${minSuffix} — referee taking a look.`
-      };
-
-    case "Possible Free Kick":
-      return {
-        title: "👀 Possible Free Kick",
-        body: `Dangerous area${minSuffix} — foul under review.`
-      };
-
-    case "Assist":
-      return {
-        title: "🅰️ Assist",
-        body: `${player || "DA United"} with the assist${minSuffix}.`
-      };
-
-    case "Yellow Card":
-      return {
-        title: "🟨 Yellow Card",
-        body: `${player || "A player"} is booked${minSuffix}. ${side} gets a booking.`
-      };
-
-    case "Red Card":
-      return {
-        title: "🟥 RED CARD!",
-        body: `${player || "A player"} is sent off${minSuffix}! ${side} down to 10 men.`
-      };
-
-    case "Substitution":
-      return {
-        title: "🔄 Substitution",
-        body: `${player ? player : "Change made"}${minSuffix}${detailSuffix}`
-      };
-
-    case "VAR Check":
-      return {
-        title: "📺 What can this be?",
-        body: `Referee reviewing the incident${minSuffix}...`
-      };
-
-    case "Goal Disallowed":
-      return {
-        title: "❌ Goal Disallowed",
-        body: `VAR rules the goal out${minSuffix}${detailSuffix}.`
-      };
-
-    case "Offside":
-      return {
-        title: "🚩 Offside",
-        body: `${player ? player + " flagged offside" : "Offside called"}${minSuffix}.`
-      };
-
-    case "Injury":
-      return {
-        title: "🩹 Injury Concern",
-        body: `${player || "A player"} down injured${minSuffix}.`
-      };
-
-    case "HT":
-      return { title: "⏸️ Half Time", body: scoreLine };
-
-    case "FT":
-      return { title: "🏁 Full Time", body: `${scoreLine} — that's full time.` };
-
-    case "Custom":
-      return { title: "📢 DA United", body: detail || player || "Live update" };
-
-    default:
-      return {
-        title: "DA United",
-        body: `${e.type}${player ? " — " + player : ""}${minSuffix}${detailSuffix}`
-      };
-  }
-}
-
-// Turns the match status dropdown into a push notification.
-function buildStatusNotification(status, scoreHome, scoreAway, opponent) {
-  const scoreLine = `DA United ${scoreHome ?? 0} - ${scoreAway ?? 0} ${opponent || "Opponent"}`.trim();
-
-  switch (status) {
-    case "Scheduled":
-      return { title: "📅 Match Scheduled", body: `DA United vs ${opponent || "Opponent"}` };
-    case "Live":
-      return { title: "🔴 WE ARE LIVE!", body: `Game underway — ${scoreLine}` };
-    case "HT":
-      return { title: "⏸️ Half Time", body: scoreLine };
-    case "FT":
-      return { title: "🏁 Full Time", body: `${scoreLine} — full time.` };
-    case "AET":
-      return { title: "⏱️ After Extra Time", body: scoreLine };
-    case "Penalties":
-      return { title: "🎯 Penalty Shootout!", body: scoreLine };
-    case "Postponed":
-      return { title: "⏳ Match Interrupted", body: `DA United vs ${opponent || "Opponent"} — game is paused.` };
-    case "Cancelled":
-      return { title: "🚫 Match Cancelled", body: `DA United vs ${opponent || "Opponent"} has been cancelled.` };
-    default:
-      return { title: "Match Update", body: scoreLine };
-  }
-}
-
 // ===================== MATCH EVENTS =====================
 let currentEvents = [];
+let squadPlayersCache = [];
+
+// Loads the squad into the event-player <select> so events (and
+// therefore stats) are tied to real players instead of free text.
+async function loadSquadIntoEventPicker() {
+  if (!window.supabaseClient) return;
+  const { data } = await window.supabaseClient.from("players").select("id,name,position").order("name");
+  squadPlayersCache = data || [];
+  const sel = document.getElementById("event-player");
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = `<option value="">Select player…</option>` +
+    squadPlayersCache.map(p => `<option value="${p.name}">${p.name} (${p.position || ""})</option>`).join("") +
+    `<option value="__custom__">Other / type name…</option>`;
+  if ([...sel.options].some(o => o.value === current)) sel.value = current;
+}
+
+document.getElementById("event-player")?.addEventListener("change", (e) => {
+  const customInput = document.getElementById("event-player-custom");
+  if (e.target.value === "__custom__") {
+    customInput.classList.remove("hidden");
+    customInput.value = "";
+    customInput.focus();
+  } else {
+    customInput.classList.add("hidden");
+  }
+});
 
 function renderEventsPreview() {
   const box = document.getElementById("events-preview");
@@ -283,132 +129,32 @@ function renderEventsPreview() {
 
   box.innerHTML = currentEvents.map((e, i) => `
     <div class="flex items-center justify-between bg-da-dark/50 rounded-lg px-3 py-1.5">
-      <span>
-        <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded ${e.side === "Opponent" ? "bg-red-500/20 text-red-400" : "bg-da-green/20 text-da-green"}">${e.side === "Opponent" ? "OPP" : "DA"}</span>
-        ${e.minute || "—"}' · <strong>${e.type}</strong> ${e.player ? "– " + e.player : ""} ${e.detail ? `<em class="text-da-muted">(${e.detail})</em>` : ""}
-      </span>
+      <span>${e.minute || "—"}' · <strong>${e.type}</strong> ${e.player ? "– " + e.player : ""}</span>
       <button type="button" data-idx="${i}" class="text-red-400 text-xs remove-event">✕</button>
     </div>
   `).join("");
 
   box.querySelectorAll(".remove-event").forEach(btn => {
-    btn.addEventListener("click", async () => {
+    btn.addEventListener("click", () => {
       currentEvents.splice(Number(btn.dataset.idx), 1);
       renderEventsPreview();
-      await persistMatchState();
-      loadMatches();
     });
   });
 }
 
-// ===================== AUTO-SAVE MATCH STATE =====================
-// Every event/update saves straight to Supabase so the live banner on the
-// dashboard updates immediately, without needing the big "Save Match" click.
-let lastMatchSaveError = null;
-
-async function persistMatchState() {
-  lastMatchSaveError = null;
-  const idField = document.getElementById("match-edit-id");
-  const id = idField.value;
-  const scoreHome = parseInt(document.getElementById("match-score-home").value) || 0;
-  const scoreAway = parseInt(document.getElementById("match-score-away").value) || 0;
-  const opponent = document.getElementById("match-opponent").value;
-  const status = document.getElementById("match-status").value || "Live";
-
-  const baseData = {
-    opponent,
-    score_home: scoreHome,
-    score_away: scoreAway,
-    venue: document.getElementById("match-venue").value,
-    competition: document.getElementById("match-comp").value || "Club Friendlies",
-    status,
-    events: currentEvents,
-    scorers: currentEvents
-      .filter(e => ["Goal", "Own Goal", "Golazo", "Free Kick Goal", "Penalty Scored"].includes(e.type))
-      .map(e => `${e.player} ${e.minute}`)
-      .join("\n")
-  };
-
-  async function attemptWrite(includeUpdatedAt) {
-    const data = includeUpdatedAt ? { ...baseData, updated_at: new Date().toISOString() } : { ...baseData };
-    if (id) {
-      return window.supabaseClient.from("matches").update(data).eq("id", id);
-    }
-    return window.supabaseClient.from("matches").insert([data]).select();
-  }
-
-  let { data: result, error } = await attemptWrite(true);
-
-  // If the matches table doesn't have an `updated_at` column yet, retry
-  // without it rather than failing outright. Live-match ordering on the
-  // dashboard needs that column though — see matches-table-fix.sql.
-  const errText = error ? JSON.stringify(error) : "";
-  if (error && /updated_at/i.test(errText)) {
-    console.warn("`updated_at` column missing on the matches table — saving without it. Run matches-table-fix.sql in Supabase to enable full live-match tracking.");
-    ({ data: result, error } = await attemptWrite(false));
-  }
-
-  if (error) {
-    console.error("Match save error:", error);
-    lastMatchSaveError = error;
-    return id || null;
-  }
-
-  if (id) return id;
-
-  const newId = result && result[0] && result[0].id;
-  if (newId) idField.value = newId;
-  return newId || null;
-}
-
-document.getElementById("btn-add-event")?.addEventListener("click", async () => {
+document.getElementById("btn-add-event")?.addEventListener("click", () => {
   const type = document.getElementById("event-type").value;
-  const side = document.getElementById("event-side")?.value || "DA United";
-  const player = document.getElementById("event-player").value.trim();
+  const sel = document.getElementById("event-player");
+  const customInput = document.getElementById("event-player-custom");
+  const player = sel.value === "__custom__" ? customInput.value.trim() : sel.value.trim();
   const minute = document.getElementById("event-minute").value.trim();
-  const detailInput = document.getElementById("event-detail");
-  const detail = detailInput ? detailInput.value.trim() : "";
 
-  const newEvent = { type, side, player, minute, detail };
-  currentEvents.push(newEvent);
-
-  document.getElementById("event-player").value = "";
+  currentEvents.push({ type, player, minute });
+  sel.value = "";
+  customInput.value = "";
+  customInput.classList.add("hidden");
   document.getElementById("event-minute").value = "";
-  if (detailInput) detailInput.value = "";
   renderEventsPreview();
-
-  // Save immediately so the live banner reflects this the instant it's added
-  await persistMatchState();
-  loadMatches();
-
-  // Send a live push for this event right away, unless the admin unchecked it
-  const notifyCheckbox = document.getElementById("event-notify");
-  if (!notifyCheckbox || notifyCheckbox.checked) {
-    const opponent = document.getElementById("match-opponent")?.value || "";
-    const scoreHome = document.getElementById("match-score-home")?.value || 0;
-    const scoreAway = document.getElementById("match-score-away")?.value || 0;
-    const venue = document.getElementById("match-venue")?.value || "Home";
-    const { title, body } = buildEventNotification(newEvent, opponent, scoreHome, scoreAway, venue);
-    await sendPushNotification(title, body, "/matches.html");
-  }
-});
-
-// Free-text custom live update (e.g. "A stunning free kick")
-document.getElementById("btn-push-custom")?.addEventListener("click", async () => {
-  const input = document.getElementById("custom-update-text");
-  const text = input?.value.trim();
-  if (!text) return;
-
-  const newEvent = { type: "Custom", side: "DA United", player: "", minute: "", detail: text };
-  currentEvents.push(newEvent);
-  renderEventsPreview();
-
-  await persistMatchState();
-  loadMatches();
-
-  await sendPushNotification("📢 DA United", text, "/matches.html");
-
-  input.value = "";
 });
 
 // ===================== FIXTURES =====================
@@ -491,6 +237,7 @@ document.getElementById("btn-save-fixture")?.addEventListener("click", async () 
   } else {
     showToast(id ? "Fixture updated" : "Fixture saved");
 
+    // Send push
     await sendPushNotification(
       "New Fixture",
       `${data.home} vs ${data.away || "Opponent"}`,
@@ -534,7 +281,7 @@ async function loadMatches() {
   list.innerHTML = data.map(m => {
     const events = m.events ? (typeof m.events === "string" ? JSON.parse(m.events) : m.events) : [];
     const eventsHtml = events.length
-      ? `<div class="text-xs text-da-muted mt-1">${events.map(e => `${e.minute || ""}' ${e.type} ${e.player || ""}${e.detail ? ` (${e.detail})` : ""}`).join(" · ")}</div>`
+      ? `<div class="text-xs text-da-muted mt-1">${events.map(e => `${e.minute || ""}' ${e.type} ${e.player || ""}`).join(" · ")}</div>`
       : "";
 
     return `
@@ -562,6 +309,8 @@ async function loadMatches() {
       document.getElementById("match-score-away").value = item.score_away ?? 0;
       document.getElementById("match-venue").value = item.venue || "Home";
       document.getElementById("match-comp").value = item.competition || "Club Friendlies";
+      document.getElementById("match-date").value = item.date || "";
+      document.getElementById("match-time").value = item.time || "";
       document.getElementById("match-status").value = item.status || "FT";
       currentEvents = item.events ? (typeof item.events === "string" ? JSON.parse(item.events) : item.events) : [];
       renderEventsPreview();
@@ -576,44 +325,72 @@ async function loadMatches() {
       await window.supabaseClient.from("matches").delete().eq("id", btn.dataset.id);
       showToast("Match deleted");
       loadMatches();
+      recalcPlayerStats();
     });
   });
 }
 
-document.getElementById("btn-save-match")?.addEventListener("click", async () => {
+const FINISHED_STATUSES = ["FT", "AET", "Penalties"];
+
+async function saveMatch(forceFullTime) {
+  const id = document.getElementById("match-edit-id").value;
   const scoreHome = parseInt(document.getElementById("match-score-home").value) || 0;
   const scoreAway = parseInt(document.getElementById("match-score-away").value) || 0;
   const opponent = document.getElementById("match-opponent").value;
-  const status = document.getElementById("match-status").value || "FT";
+  const status = forceFullTime ? "FT" : (document.getElementById("match-status").value || "FT");
 
-  const id = await persistMatchState();
+  const data = {
+    opponent,
+    score_home: scoreHome,
+    score_away: scoreAway,
+    venue: document.getElementById("match-venue").value,
+    competition: document.getElementById("match-comp").value || "Club Friendlies",
+    date: document.getElementById("match-date").value,
+    time: document.getElementById("match-time").value,
+    status,
+    events: currentEvents,
+    scorers: currentEvents
+      .filter(e => e.type === "Goal" || e.type === "Own Goal")
+      .map(e => `${e.player} ${e.minute}`)
+      .join("\n")
+  };
 
-  if (!id) {
-    const err = lastMatchSaveError;
-    const details = err ? (err.message || err.details || err.hint || JSON.stringify(err)) : "Unknown error";
-    alert("Error saving match:\n\n" + details);
+  let error;
+  if (id) {
+    ({ error } = await window.supabaseClient.from("matches").update(data).eq("id", id));
+  } else {
+    ({ error } = await window.supabaseClient.from("matches").insert([data]));
+  }
+
+  if (error) {
+    console.error(error);
+    alert("Error saving match");
     return;
   }
 
-  showToast("Match saved");
+  showToast(id ? "Match updated" : "Match saved");
 
-  const { title, body } = buildStatusNotification(status, scoreHome, scoreAway, opponent);
-  await sendPushNotification(title, body, "/matches.html");
+  await sendPushNotification(
+    status === "FT" ? "Full Time" : status === "Live" ? "Kick Off" : "Match Update",
+    `DA United ${scoreHome} - ${scoreAway} ${opponent || ""}`,
+    "/matches.html"
+  );
 
-  // IMPORTANT: while the match is still Live or at Half Time, keep the form
-  // bound to this same match (don't clear match-edit-id). Otherwise the next
-  // event you log creates a brand new orphan match instead of updating this
-  // one — which is why goals/cards were disappearing before.
-  if (status === "Live" || status === "HT") {
-    document.getElementById("match-form-title").textContent =
-      status === "Live" ? "Editing Live Match" : "Editing Match — Half Time";
-    document.getElementById("btn-cancel-match").classList.remove("hidden");
-  } else {
-    resetMatchForm();
+  // Once a match is finished: recompute every player's Goals/Assists/
+  // Saves/Clean Sheets from all Full Time matches, and clear the
+  // matching "upcoming" fixture so it doesn't need re-entering.
+  if (FINISHED_STATUSES.includes(status) && opponent) {
+    await window.supabaseClient.from("fixtures").delete().ilike("away", `%${opponent}%`);
+    await recalcPlayerStats();
+    loadFixtures();
   }
 
+  resetMatchForm();
   loadMatches();
-});
+}
+
+document.getElementById("btn-save-match")?.addEventListener("click", () => saveMatch(false));
+document.getElementById("btn-full-time")?.addEventListener("click", () => saveMatch(true));
 
 document.getElementById("btn-cancel-match")?.addEventListener("click", resetMatchForm);
 
@@ -624,11 +401,68 @@ function resetMatchForm() {
   document.getElementById("match-score-away").value = "";
   document.getElementById("match-venue").value = "Home";
   document.getElementById("match-comp").value = "Club Friendlies";
+  document.getElementById("match-date").value = "";
+  document.getElementById("match-time").value = "";
   document.getElementById("match-status").value = "FT";
   currentEvents = [];
   renderEventsPreview();
   document.getElementById("match-form-title").textContent = "Add Match Result";
   document.getElementById("btn-cancel-match").classList.add("hidden");
+}
+
+// ===================== AUTO PLAYER STATS =====================
+// Scans every Full Time / AET / Penalties match's events and
+// rebuilds Goals, Assists, Saves and Clean Sheets for the whole
+// squad, matched by player name. This is what makes "log a goal in
+// a match" show up on the Squad page without touching it by hand.
+async function recalcPlayerStats() {
+  if (!window.supabaseClient) return;
+
+  const { data: matches } = await window.supabaseClient
+    .from("matches")
+    .select("events,status,score_away")
+    .in("status", FINISHED_STATUSES);
+
+  const { data: players } = await window.supabaseClient.from("players").select("id,name,position");
+  if (!players || !players.length) return;
+
+  const norm = s => (s || "").trim().toLowerCase();
+  const tally = {}; // normalized name -> {goals, assists, saves, cleanSheets}
+  players.forEach(p => { tally[norm(p.name)] = { goals: 0, assists: 0, saves: 0, cleanSheets: 0 }; });
+
+  (matches || []).forEach(m => {
+    const events = m.events ? (typeof m.events === "string" ? JSON.parse(m.events) : m.events) : [];
+    const concededZero = Number(m.score_away ?? 0) === 0;
+
+    events.forEach(e => {
+      const key = norm(e.player);
+      if (!key || !tally[key]) return;
+      if (e.type === "Goal") tally[key].goals += 1;
+      if (e.type === "Assist") tally[key].assists += 1;
+      if (e.type === "Save") tally[key].saves += 1;
+    });
+
+    // Clean sheet: awarded to every goalkeeper for a completed match
+    // where DA United didn't concede. (Refined once matchday
+    // selections track who actually started in goal.)
+    if (concededZero) {
+      players.filter(p => (p.position || "").toUpperCase() === "GK")
+        .forEach(p => { tally[norm(p.name)].cleanSheets += 1; });
+    }
+  });
+
+  await Promise.all(players.map(p => {
+    const t = tally[norm(p.name)];
+    if (!t) return Promise.resolve();
+    return window.supabaseClient.from("players").update({
+      goals: t.goals,
+      assists: t.assists,
+      saves: t.saves,
+      clean_sheets: t.cleanSheets
+    }).eq("id", p.id);
+  }));
+
+  loadPlayers();
 }
 
 // ===================== PLAYERS =====================
@@ -646,21 +480,40 @@ async function loadPlayers() {
     return;
   }
 
-  list.innerHTML = data.map(p => `
+  list.innerHTML = data.map(p => {
+    const isGK = (p.position || "").toUpperCase() === "GK";
+    const statLine = isGK
+      ? `${p.apps || 0} apps · ${p.saves || 0} saves · ${p.clean_sheets || 0} clean sheets`
+      : `${p.apps || 0} apps · ${p.goals || 0}G ${p.assists || 0}A`;
+    const available = p.available !== false;
+    return `
     <div class="bg-da-card border border-da-border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div class="flex items-center gap-3">
         ${p.photo || p.photo_url ? `<img src="${p.photo || p.photo_url}" class="w-12 h-12 rounded-full object-cover">` : `<div class="w-12 h-12 rounded-full bg-white/10"></div>`}
         <div>
-          <div class="font-semibold">${p.name}</div>
-          <div class="text-sm text-da-muted">${p.position || ""} · ${p.role || ""} · ${p.apps || 0} apps · ${p.goals || 0}G ${p.assists || 0}A</div>
+          <div class="font-semibold flex items-center gap-2">
+            ${p.name}
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded ${available ? "bg-da-green/20 text-da-green" : "bg-red-500/20 text-red-400"}">${available ? "AVAILABLE" : "UNAVAILABLE"}</span>
+          </div>
+          <div class="text-sm text-da-muted">${p.position || ""} · ${p.role || ""} · ${statLine}</div>
         </div>
       </div>
       <div class="flex gap-2">
+        <button data-id="${p.id}" data-available="${available}" class="toggle-available text-xs px-3 py-1.5 rounded-full ${available ? "bg-red-500/20 text-red-400 hover:bg-red-500/30" : "bg-da-green/20 text-da-green hover:bg-da-green/30"}">${available ? "Mark Unavailable" : "Mark Available"}</button>
         <button data-id="${p.id}" class="edit-player text-xs px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15">Edit</button>
         <button data-id="${p.id}" class="delete-player text-xs px-3 py-1.5 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/30">Delete</button>
       </div>
     </div>
-  `).join("");
+  `;
+  }).join("");
+
+  list.querySelectorAll(".toggle-available").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const nowAvailable = btn.dataset.available !== "true";
+      await window.supabaseClient.from("players").update({ available: nowAvailable }).eq("id", btn.dataset.id);
+      loadPlayers();
+    });
+  });
 
   list.querySelectorAll(".edit-player").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -673,6 +526,9 @@ async function loadPlayers() {
       document.getElementById("player-apps").value = item.apps || 0;
       document.getElementById("player-goals").value = item.goals || 0;
       document.getElementById("player-assists").value = item.assists || 0;
+      document.getElementById("player-saves").value = item.saves || 0;
+      document.getElementById("player-clean-sheets").value = item.clean_sheets || 0;
+      document.getElementById("player-available").checked = item.available !== false;
       document.getElementById("player-form-title").textContent = "Edit Player";
       document.getElementById("btn-cancel-player").classList.remove("hidden");
     });
@@ -700,7 +556,10 @@ document.getElementById("btn-save-player")?.addEventListener("click", async () =
     role: document.getElementById("player-role").value,
     apps: parseInt(document.getElementById("player-apps").value) || 0,
     goals: parseInt(document.getElementById("player-goals").value) || 0,
-    assists: parseInt(document.getElementById("player-assists").value) || 0
+    assists: parseInt(document.getElementById("player-assists").value) || 0,
+    saves: parseInt(document.getElementById("player-saves").value) || 0,
+    clean_sheets: parseInt(document.getElementById("player-clean-sheets").value) || 0,
+    available: document.getElementById("player-available").checked
   };
   if (photo) data.photo = photo;
 
@@ -731,6 +590,9 @@ function resetPlayerForm() {
   document.getElementById("player-apps").value = 0;
   document.getElementById("player-goals").value = 0;
   document.getElementById("player-assists").value = 0;
+  document.getElementById("player-saves").value = 0;
+  document.getElementById("player-clean-sheets").value = 0;
+  document.getElementById("player-available").checked = true;
   document.getElementById("player-photo").value = "";
   document.getElementById("player-form-title").textContent = "Add Player";
   document.getElementById("btn-cancel-player").classList.add("hidden");
@@ -818,6 +680,7 @@ document.getElementById("btn-save-story")?.addEventListener("click", async () =>
   } else {
     showToast(id ? "Story updated" : "Story published");
 
+    // Send push notification
     await sendPushNotification(
       "DA United",
       title || "New story posted",
@@ -904,7 +767,7 @@ document.getElementById("btn-save-gallery")?.addEventListener("click", async () 
   }
 });
 
-// ===================== LIVE (stream) =====================
+// ===================== LIVE =====================
 let liveOn = false;
 const toggleLive = document.getElementById("toggle-live");
 
@@ -1146,39 +1009,252 @@ document.getElementById("btn-save-predictions")?.addEventListener("click", async
   }
 });
 
-// If there's already a Live or Half-Time match when the admin panel opens
-// (e.g. page refreshed mid-match), load it straight into the form so the
-// next event you log updates it — instead of leaving the form blank and
-// defaulting to a new "Full Time" match.
-async function autoLoadActiveLiveMatch() {
-  const idField = document.getElementById("match-edit-id");
-  if (!idField || idField.value) return; // already editing something — don't override
-  if (!window.supabaseClient) return;
+// ===================== STATS (Formation + Attributes + Ratings) =====================
 
-  const { data } = await window.supabaseClient
-    .from("matches")
+async function loadFormationAdmin() {
+  if (!window.supabaseClient) return;
+  const { data, error } = await window.supabaseClient
+    .from("team_news")
     .select("*")
-    .in("status", ["Live", "HT"])
+    .eq("is_active", true)
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (!data) return;
+  if (error) console.error("loadFormationAdmin:", error);
 
-  idField.value = data.id;
-  document.getElementById("match-opponent").value = data.opponent || "";
-  document.getElementById("match-score-home").value = data.score_home ?? 0;
-  document.getElementById("match-score-away").value = data.score_away ?? 0;
-  document.getElementById("match-venue").value = data.venue || "Home";
-  document.getElementById("match-comp").value = data.competition || "Club Friendlies";
-  document.getElementById("match-status").value = data.status || "Live";
-  currentEvents = data.events ? (typeof data.events === "string" ? JSON.parse(data.events) : data.events) : [];
-  renderEventsPreview();
-  document.getElementById("match-form-title").textContent =
-    data.status === "Live" ? "Editing Live Match" : "Editing Match — Half Time";
-  document.getElementById("btn-cancel-match").classList.remove("hidden");
+  if (data) {
+    document.getElementById("stats-formation").value = data.formation || "4-3-3";
+    document.getElementById("stats-notes").value = data.notes || "";
+    document.getElementById("stats-xi").value = Array.isArray(data.selected_xi) ? data.selected_xi.join(", ") : "";
+    document.getElementById("stats-subs").value = Array.isArray(data.substitutes) ? data.substitutes.join(", ") : "";
+  }
 }
 
+document.getElementById("btn-save-formation")?.addEventListener("click", async () => {
+  const formation = document.getElementById("stats-formation").value.trim() || "4-3-3";
+  const notes = document.getElementById("stats-notes").value.trim();
+  const xi = document.getElementById("stats-xi").value
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+  const subs = document.getElementById("stats-subs").value
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  // First deactivate any currently active rows
+  await window.supabaseClient
+    .from("team_news")
+    .update({ is_active: false })
+    .eq("is_active", true);
+
+  // Then insert the new active one
+  const { error } = await window.supabaseClient
+    .from("team_news")
+    .insert([{
+      formation,
+      notes,
+      selected_xi: xi,
+      substitutes: subs,
+      is_active: true,
+      updated_at: new Date().toISOString()
+    }]);
+
+  if (error) {
+    console.error("Save formation error:", error);
+    alert("Error saving formation: " + error.message);
+  } else {
+    showToast("Formation saved");
+  }
+});
+
+async function loadAttributesAdmin() {
+  const box = document.getElementById("attrs-list");
+  if (!box || !window.supabaseClient) return;
+
+  const { data, error } = await window.supabaseClient
+    .from("players")
+    .select("id, name, position, pace, shooting, passing, dribbling, defending, physical, overall")
+    .order("name");
+
+  if (error) {
+    console.error("Failed to load players:", error);
+    box.innerHTML = `<p class="text-red-400 text-sm">Error loading players: ${error.message}</p>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    box.innerHTML = `<p class="text-da-muted text-sm">No players found</p>`;
+    return;
+  }
+
+  box.innerHTML = data.map(p => `
+    <div class="bg-da-dark/50 border border-da-border rounded-xl p-4" data-id="${p.id}">
+      <div class="font-semibold mb-3">
+        ${p.name} 
+        <span class="text-xs text-da-muted">(${p.position || "—"})</span>
+      </div>
+      <div class="grid grid-cols-3 sm:grid-cols-7 gap-2 text-center">
+        ${["pace","shooting","passing","dribbling","defending","physical","overall"].map(k => `
+          <div>
+            <div class="text-[10px] text-da-muted uppercase mb-1">${k.slice(0,3)}</div>
+            <input type="number" min="1" max="99" 
+                   value="${p[k] != null ? p[k] : 70}" 
+                   data-field="${k}"
+                   class="w-full bg-da-dark border border-da-border rounded-lg px-2 py-1.5 text-sm text-center attr-input">
+          </div>
+        `).join("")}
+      </div>
+      <button class="mt-3 text-xs bg-da-green/20 text-da-green px-3 py-1.5 rounded-full save-attrs">
+        Save
+      </button>
+    </div>
+  `).join("");
+
+  // Attach save handlers
+  box.querySelectorAll(".save-attrs").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const card = btn.closest("[data-id]");
+      const id = card.dataset.id;
+      const updates = {};
+
+      card.querySelectorAll(".attr-input").forEach(inp => {
+        const val = parseInt(inp.value);
+        updates[inp.dataset.field] = isNaN(val) ? 70 : Math.min(99, Math.max(1, val));
+      });
+
+      console.log("Updating player", id, updates); // helpful for debugging
+
+      const { data, error } = await window.supabaseClient
+        .from("players")
+        .update(updates)
+        .eq("id", id)
+        .select();
+
+      if (error) {
+        console.error("Attribute update failed:", error);
+        alert("Error saving attributes:\n" + error.message);
+      } else {
+        showToast("Attributes saved");
+        console.log("Saved:", data);
+      }
+    });
+  });
+}
+
+async function loadRatingSelects() {
+  if (!window.supabaseClient) return;
+
+  const { data: matches } = await window.supabaseClient
+    .from("matches")
+    .select("id, opponent, date, score_home, score_away")
+    .order("created_at", { ascending: false })
+    .limit(40);
+
+  const matchSel = document.getElementById("rating-match");
+  if (matchSel) {
+    matchSel.innerHTML = `<option value="">Select match…</option>` +
+      (matches || []).map(m => 
+        `<option value="${m.id}">DA ${m.score_home ?? 0}-${m.score_away ?? 0} ${m.opponent || ""} (${m.date || ""})</option>`
+      ).join("");
+  }
+
+  const { data: players } = await window.supabaseClient
+    .from("players")
+    .select("id, name")
+    .order("name");
+
+  const playerSel = document.getElementById("rating-player");
+  if (playerSel) {
+    playerSel.innerHTML = `<option value="">Select player…</option>` +
+      (players || []).map(p => 
+        `<option value="${p.id}" data-name="${p.name}">${p.name}</option>`
+      ).join("");
+  }
+}
+
+document.getElementById("btn-save-rating")?.addEventListener("click", async () => {
+  const matchId = document.getElementById("rating-match").value;
+  const playerSel = document.getElementById("rating-player");
+  const playerId = playerSel.value;
+  const playerName = playerSel.selectedOptions[0]?.dataset?.name || playerSel.selectedOptions[0]?.textContent || "";
+  const rating = parseFloat(document.getElementById("rating-value").value);
+
+  if (!matchId || !playerId || isNaN(rating)) {
+    alert("Please select a match, a player and enter a rating");
+    return;
+  }
+
+  const { error } = await window.supabaseClient
+    .from("match_ratings")
+    .insert([{
+      match_id: matchId,
+      player_id: playerId,
+      player_name: playerName,
+      rating
+    }]);
+
+  if (error) {
+    console.error("Save rating error:", error);
+    alert("Error saving rating: " + error.message);
+  } else {
+    showToast("Rating added");
+    document.getElementById("rating-value").value = "";
+    loadRatingsAdmin();
+  }
+});
+
+async function loadRatingsAdmin() {
+  const box = document.getElementById("ratings-admin-list");
+  if (!box || !window.supabaseClient) return;
+
+  const { data, error } = await window.supabaseClient
+    .from("match_ratings")
+    .select("id, player_name, rating, matches(opponent, date)")
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) {
+    console.error(error);
+    box.innerHTML = `<p class="text-red-400 text-sm">Failed to load ratings</p>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    box.innerHTML = `<p class="text-da-muted text-sm">No ratings yet</p>`;
+    return;
+  }
+
+  box.innerHTML = data.map(r => `
+    <div class="flex items-center justify-between bg-da-dark/40 rounded-lg px-3 py-2 text-sm">
+      <span>
+        ${r.player_name} – <strong>${Number(r.rating).toFixed(1)}</strong>
+        <span class="text-da-muted text-xs ml-1">(${r.matches?.opponent || "—"})</span>
+      </span>
+      <button data-id="${r.id}" class="text-red-400 text-xs delete-rating">Delete</button>
+    </div>
+  `).join("");
+
+  box.querySelectorAll(".delete-rating").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Delete this rating?")) return;
+      await window.supabaseClient.from("match_ratings").delete().eq("id", btn.dataset.id);
+      loadRatingsAdmin();
+    });
+  });
+}
+
+// Hook into the existing loader
+const _originalLoadAll = typeof loadAllLists === "function" ? loadAllLists : null;
+
+loadAllLists = function () {
+  if (_originalLoadAll) _originalLoadAll();
+  loadFormationAdmin();
+  loadAttributesAdmin();
+  loadRatingSelects();
+  loadRatingsAdmin();
+};
 // ===================== INIT =====================
 function loadAllLists() {
   if (!window.supabaseClient) {
@@ -1192,8 +1268,8 @@ function loadAllLists() {
   loadGallery();
   loadTraining();
   loadDatv();
+  loadSquadIntoEventPicker();
   renderEventsPreview();
-  autoLoadActiveLiveMatch();
 }
 
 if (sessionStorage.getItem("da_admin_logged_in") === "true") {

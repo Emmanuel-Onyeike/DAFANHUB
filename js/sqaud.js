@@ -49,42 +49,66 @@ function normalizePosition(pos) {
 
 function playerCardHTML(player) {
   const pos = normalizePosition(player.position);
+  const isGK = pos === "GK";
   const name = player.name || "Player";
   const role = player.role || player.title || pos;
   const photo = player.photo_url || player.photo || "";
   const apps = player.apps ?? player.appearances ?? 0;
   const goals = player.goals ?? 0;
   const assists = player.assists ?? 0;
+  const saves = player.saves ?? 0;
+  const cleanSheets = player.clean_sheets ?? 0;
+  const available = player.available !== false;
 
   const photoHTML = photo
     ? `<img src="${photo}" alt="${name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">`
     : "";
 
+  const statCols = isGK
+    ? `
+        <div>
+          <div class="text-lg font-bold">${apps}</div>
+          <div class="text-[10px] text-da-muted">Apps</div>
+        </div>
+        <div>
+          <div class="text-lg font-bold">${saves}</div>
+          <div class="text-[10px] text-da-muted">Saves</div>
+        </div>
+        <div>
+          <div class="text-lg font-bold">${cleanSheets}</div>
+          <div class="text-[10px] text-da-muted">Clean Sheets</div>
+        </div>
+      `
+    : `
+        <div>
+          <div class="text-lg font-bold">${apps}</div>
+          <div class="text-[10px] text-da-muted">Apps</div>
+        </div>
+        <div>
+          <div class="text-lg font-bold">${goals}</div>
+          <div class="text-[10px] text-da-muted">Goals</div>
+        </div>
+        <div>
+          <div class="text-lg font-bold">${assists}</div>
+          <div class="text-[10px] text-da-muted">Assists</div>
+        </div>
+      `;
+
   return `
-    <article class="player-card group bg-da-card border border-da-border rounded-2xl overflow-hidden" data-position="${pos}">
+    <article class="player-card group bg-da-card border border-da-border rounded-2xl overflow-hidden ${available ? "" : "opacity-60"}" data-position="${pos}">
       <div class="relative aspect-[4/3] bg-[#111] overflow-hidden">
         ${photoHTML}
         <div class="${photo ? "hidden" : "flex"} absolute inset-0 items-center justify-center text-da-muted text-sm">No photo</div>
         <span class="absolute top-3 left-3 text-[10px] font-bold tracking-wider bg-black/60 backdrop-blur px-2 py-1 rounded-md">${pos}</span>
+        <span class="absolute top-3 right-3 text-[10px] font-bold tracking-wider px-2 py-1 rounded-md backdrop-blur ${available ? "bg-da-green/80 text-black" : "bg-red-500/80 text-white"}">${available ? "AVAILABLE" : "UNAVAILABLE"}</span>
       </div>
       <div class="p-4">
         <p class="text-[10px] font-semibold tracking-wider text-da-green uppercase mb-1">${role}</p>
         <h3 class="font-semibold text-base mb-3 truncate">${name}</h3>
         <div class="h-px bg-da-border mb-3"></div>
         <div class="flex justify-between text-center">
-          <div>
-            <div class="text-lg font-bold">${apps}</div>
-            <div class="text-[10px] text-da-muted">Apps</div>
-          </div>
-          <div>
-            <div class="text-lg font-bold">${goals}</div>
-            <div class="text-[10px] text-da-muted">Goals</div>
-          </div>
-          <div>
-            <div class="text-lg font-bold">${assists}</div>
-            <div class="text-[10px] text-da-muted">Assists</div>
-          </div>
+          ${statCols}
         </div>
       </div>
     </article>

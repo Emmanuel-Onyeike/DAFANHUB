@@ -1,5 +1,6 @@
 // ======================
-// DA United – Matches (Supabase + past results + live match banner)
+// DA United – Matches (Supabase, status-driven)
+// DB matches on top (Admin), old manual games underneath.
 // ======================
 
 const sidebar = document.getElementById("sidebar");
@@ -12,29 +13,206 @@ function openSidebar() {
   if (overlay) overlay.classList.remove("hidden");
   document.body.style.overflow = "hidden";
 }
-
 function closeSidebar() {
   if (sidebar) sidebar.classList.remove("open");
   if (overlay) overlay.classList.add("hidden");
   document.body.style.overflow = "";
 }
-
 if (btnOpen) btnOpen.addEventListener("click", openSidebar);
 if (btnClose) btnClose.addEventListener("click", closeSidebar);
 if (overlay) overlay.addEventListener("click", closeSidebar);
-
 document.querySelectorAll("#sidebar a").forEach(link => {
   link.addEventListener("click", () => {
     if (window.innerWidth < 1024) closeSidebar();
   });
 });
 
-const PAST_MATCHES = [
+// A match is "in play" only for these statuses — everything else
+// (Scheduled, FT, AET, Penalties, Postponed, Cancelled) is NOT live.
+const LIVE_STATUSES = ["Live", "HT"];
+const FINISHED_STATUSES = ["FT", "AET", "Penalties"];
+
+// Event type → icon + label shown in the feed.
+const EVENT_META = {
+  "Goal":             { icon: "⚽", label: "Goal",           color: "text-da-green" },
+  "Golazo":           { icon: "🚀", label: "Screamer",       color: "text-da-green" },
+  "Free Kick Goal":   { icon: "🎯", label: "Free Kick Goal", color: "text-da-green" },
+  "Penalty Scored":   { icon: "✅", label: "Penalty Scored", color: "text-da-green" },
+  "Own Goal":         { icon: "😬", label: "Own Goal",       color: "text-red-400" },
+  "Assist":           { icon: "🅰️", label: "Assist",         color: "text-da-muted" },
+  "Yellow Card":      { icon: "🟨", label: "Yellow Card",    color: "text-yellow-400" },
+  "Red Card":         { icon: "🟥", label: "Red Card",       color: "text-red-400" },
+  "Substitution":     { icon: "🔁", label: "Substitution",   color: "text-da-muted" },
+  "Free Kick":        { icon: "🦵", label: "Free Kick",      color: "text-da-muted" },
+  "Corner":           { icon: "🚩", label: "Corner",         color: "text-da-muted" },
+  "Save":             { icon: "🧤", label: "Save",           color: "text-da-muted" },
+  "Penalty":          { icon: "⚽", label: "Penalty",        color: "text-da-green" },
+  "Penalty Missed":   { icon: "❌", label: "Penalty Missed", color: "text-red-400" },
+  "Possible Penalty": { icon: "🤔", label: "Possible Penalty", color: "text-da-muted" },
+  "VAR":              { icon: "📺", label: "VAR Check",      color: "text-da-muted" },
+  "VAR Check":        { icon: "📺", label: "VAR Check",      color: "text-da-muted" },
+  "Goal Disallowed":  { icon: "❌", label: "Goal Disallowed",color: "text-red-400" },
+  "Offside":          { icon: "🚫", label: "Offside",        color: "text-da-muted" },
+  "Injury":           { icon: "🩹", label: "Injury",         color: "text-da-muted" },
+  "Kick Off":         { icon: "🟢", label: "Kick Off",       color: "text-da-muted" },
+  "Custom":           { icon: "📢", label: "Update",         color: "text-da-muted" },
+  "HT":               { icon: "⏸️", label: "Half Time",      color: "text-da-muted" },
+  "FT":               { icon: "🏁", label: "Full Time",      color: "text-da-muted" },
+  "Other":            { icon: "•",  label: "Update",         color: "text-da-muted" },
+};
+
+function parseEvents(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {}
+  }
+  return [];
+}
+
+function statusBadge(status) {
+  if (LIVE_STATUSES.includes(status)) {
+    return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-red-600 text-white text-[10px] font-bold">
+      <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>${status === "HT" ? "HALF TIME" : "LIVE"}
+    </span>`;
+  }
+  if (status === "Scheduled") {
+    return `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-white/10 text-da-muted">SCHEDULED</span>`;
+  }
+  if (status === "Postponed") {
+    return `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-400">POSTPONED</span>`;
+  }
+  if (status === "Cancelled") {
+    return `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-500/20 text-red-400">CANCELLED</span>`;
+  }
+  return ""; // finished statuses get a WIN/DRAW/LOSS pill instead
+}
+
+function opponentInitials(name) {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+function renderEventFeed(events) {
+  if (!events.length) return "";
+  const rows = events
+    .slice()
+    .reverse() // most recent first
+    .map(e => {
+      const meta = EVENT_META[e.type] || EVENT_META["Other"];
+      return `<div class="flex items-center gap-2 text-sm">
+        <span>${meta.icon}</span>
+        <span class="font-medium ${meta.color}">${meta.label}</span>
+        ${e.player ? `<span class="text-gray-300">${e.player}</span>` : ""}
+        ${e.side === "Opponent" ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">OPP</span>` : ""}
+        ${e.minute ? `<span class="text-da-muted ml-auto">${e.minute}</span>` : ""}
+      </div>`;
+    })
+    .join("");
+  return `<div class="border-t border-da-border px-5 py-4 bg-black/20 space-y-2">${rows}</div>`;
+}
+
+function renderMatchCard(m) {
+  const homeScore = Number(m.score_home ?? 0);
+  const awayScore = Number(m.score_away ?? 0);
+  const opponent = m.opponent || "Opponent";
+  const isHome = String(m.venue || "Home").toLowerCase() !== "away";
+  const competition = m.competition || "Club Friendlies";
+  const status = m.status || "FT";
+  const events = parseEvents(m.events);
+  const finished = FINISHED_STATUSES.includes(status);
+
+  let resultPill = "";
+  let scoreClass = "text-white";
+  if (finished) {
+    if (homeScore > awayScore) {
+      resultPill = `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-da-green/20 text-da-green">WIN</span>`;
+      scoreClass = "text-da-green";
+    } else if (homeScore < awayScore) {
+      resultPill = `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-500/20 text-red-400">LOSS</span>`;
+      scoreClass = "text-red-400";
+    } else {
+      resultPill = `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-white/10 text-da-muted">DRAW</span>`;
+      scoreClass = "text-da-muted";
+    }
+  } else {
+    resultPill = statusBadge(status);
+    if (LIVE_STATUSES.includes(status)) scoreClass = "text-da-green";
+  }
+
+  const dateLine = [m.date, m.time].filter(Boolean).join(" · ");
+
+  return `
+    <div class="match-card bg-da-card border border-da-border rounded-2xl overflow-hidden">
+      <div class="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+          <div class="text-center">
+            <div class="w-12 h-12 rounded-xl bg-white flex items-center justify-center overflow-hidden">
+              <img src="assets/crest.png" alt="DA" class="w-full h-full object-contain" onerror="this.parentElement.innerHTML='<span class=\\'text-xs font-black text-black\\'>DA</span>'">
+            </div>
+            <p class="text-xs mt-1.5 font-medium">DA United</p>
+          </div>
+          <div class="text-center px-3">
+            <div class="flex items-center gap-2 justify-center mb-1">${resultPill}</div>
+            <div class="text-2xl font-bold tracking-tight ${scoreClass}">${homeScore} – ${awayScore}</div>
+          </div>
+          <div class="text-center">
+            <div class="w-12 h-12 rounded-full bg-da-border flex items-center justify-center text-sm font-bold text-da-muted">${opponentInitials(opponent)}</div>
+            <p class="text-xs mt-1.5 font-medium">${opponent}</p>
+          </div>
+        </div>
+        <div class="text-right text-sm text-da-muted">
+          <div>${isHome ? "Home" : "Away"} · ${competition}</div>
+          ${dateLine ? `<div class="text-xs mt-0.5">${dateLine}</div>` : ""}
+        </div>
+      </div>
+      ${renderEventFeed(events)}
+    </div>
+  `;
+}
+
+function findLiveMatch(matches) {
+  return matches.find(m => LIVE_STATUSES.includes(m.status));
+}
+
+function renderLiveBanner(m) {
+  const events = parseEvents(m.events);
+  const lastEvent = events.length ? events[events.length - 1] : null;
+  const lastMeta = lastEvent ? (EVENT_META[lastEvent.type] || EVENT_META["Other"]) : null;
+
+  return `
+    <a href="live.html" class="block bg-da-card border border-da-green/40 rounded-2xl p-5 hover:border-da-green transition-colors">
+      <div class="flex items-center justify-between gap-3 mb-3">
+        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-red-600 text-white text-[10px] font-bold">
+          <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+          ${m.status === "HT" ? "HALF TIME" : "LIVE"}
+        </span>
+        ${lastEvent ? `<span class="text-xs text-da-muted">${lastMeta.icon} Latest: ${lastMeta.label}${lastEvent.player ? " — " + lastEvent.player : ""} ${lastEvent.minute || ""}</span>` : ""}
+      </div>
+      <div class="flex items-center justify-between gap-3">
+        <span class="font-semibold">DA United</span>
+        <span class="text-2xl font-bold tracking-tight text-da-green">${m.score_home ?? 0} – ${m.score_away ?? 0}</span>
+        <span class="font-semibold text-right">${m.opponent || "Opponent"}</span>
+      </div>
+      <p class="text-sm text-da-muted mt-2">Tap to watch on Live →</p>
+    </a>
+  `;
+}
+
+// ===================== LEGACY (manually added) MATCHES =====================
+// The games played before Admin took over match entry. They live here only,
+// never in the database, so Admin can't duplicate or wipe them.
+const LEGACY_MATCHES = [
   {
-    opponent: "Ashgrove",
-    home_score: 2,
-    away_score: 3,
-    venue_type: "away",
+    opponent: "Ashgrove Students",
+    score_home: 2,
+    score_away: 3,
+    venue: "Away",
     competition: "Club Friendlies",
     scorers: [
       { name: "Victor", minute: "15'" },
@@ -44,23 +222,21 @@ const PAST_MATCHES = [
   },
   {
     opponent: "Delta Big Boys",
-    home_score: 2,
-    away_score: 1,
-    venue_type: "home",
+    score_home: 2,
+    score_away: 1,
+    venue: "Home",
     competition: "Club Friendlies",
     scorers: [
       { name: "Ebube", minute: "70'" },
       { name: "Ebube", minute: "90'" }
     ],
-    opp_scorers: [
-      { name: "Savior", minute: "20'" }
-    ]
+    opp_scorers: [{ name: "Savior", minute: "20'" }]
   },
   {
     opponent: "Viking FK",
-    home_score: 3,
-    away_score: 0,
-    venue_type: "home",
+    score_home: 3,
+    score_away: 0,
+    venue: "Home",
     competition: "Club Friendlies",
     scorers: [
       { name: "Nmesoma", minute: "12'" },
@@ -71,24 +247,22 @@ const PAST_MATCHES = [
   },
   {
     opponent: "Delta Big Boys",
-    home_score: 3,
-    away_score: 1,
-    venue_type: "away",
+    score_home: 3,
+    score_away: 1,
+    venue: "Away",
     competition: "Club Friendlies",
     scorers: [
       { name: "Emma", minute: "40'" },
       { name: "Zubby", minute: "75'" },
       { name: "Ebube", minute: "90+5'" }
     ],
-    opp_scorers: [
-      { name: "Wilson", minute: "30'" }
-    ]
+    opp_scorers: [{ name: "Wilson", minute: "30'" }]
   },
   {
     opponent: "Higher Ground FC",
-    home_score: 4,
-    away_score: 3,
-    venue_type: "home",
+    score_home: 4,
+    score_away: 3,
+    venue: "Home",
     competition: "Club Friendlies",
     scorers: [
       { name: "Miracle", minute: "45+5'" },
@@ -104,62 +278,28 @@ const PAST_MATCHES = [
   }
 ];
 
-function opponentInitials(name) {
-  if (!name) return "?";
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
-}
-
-function parseScorers(raw) {
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw;
-  if (typeof raw === "string") {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    } catch (e) {}
-    return raw.split(",").map(s => s.trim()).filter(Boolean).map(s => {
-      const m = s.match(/^(.+?)\s+(\d+\+?\d*'?)$/);
-      if (m) return { name: m[1].trim(), minute: m[2] };
-      return { name: s, minute: "" };
-    });
-  }
-  return [];
-}
-
-function renderMatchCard(m) {
-  const homeScore = Number(m.home_score ?? m.score_home ?? 0);
-  const awayScore = Number(m.away_score ?? m.score_away ?? 0);
-  const opponent = m.opponent || m.away || "Opponent";
-  const isHome = (m.venue_type || m.home_away || m.venue || "home").toLowerCase() !== "away";
-  const competition = m.competition || "Club Friendlies";
-  const venueLabel = isHome ? "Home" : "Away";
-
-  let result = "DRAW";
-  let scoreClass = "text-da-muted";
-  let resultClass = "text-da-muted/80";
-
+function renderLegacyMatchCard(m) {
+  const homeScore = m.score_home;
+  const awayScore = m.score_away;
+  const isHome = String(m.venue || "Home").toLowerCase() !== "away";
+  let resultPill, scoreClass;
   if (homeScore > awayScore) {
-    result = "WIN";
+    resultPill = `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-da-green/20 text-da-green">WIN</span>`;
     scoreClass = "text-da-green";
-    resultClass = "text-da-green/80";
   } else if (homeScore < awayScore) {
-    result = "LOSS";
+    resultPill = `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-500/20 text-red-400">LOSS</span>`;
     scoreClass = "text-red-400";
-    resultClass = "text-red-400/80";
+  } else {
+    resultPill = `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-white/10 text-da-muted">DRAW</span>`;
+    scoreClass = "text-da-muted";
   }
 
-  const daScorers = parseScorers(m.scorers || m.da_scorers || m.goal_scorers);
-  const oppScorers = parseScorers(m.opp_scorers || m.opponent_scorers);
-
-  const daList = daScorers.length
-    ? daScorers.map(s => `<li>${s.name || s} ${s.minute ? `<span class="text-da-muted">${s.minute}</span>` : ""}</li>`).join("")
+  const daList = m.scorers.length
+    ? m.scorers.map(s => `<li>${s.name} <span class="text-da-muted">${s.minute}</span></li>`).join("")
     : `<li class="text-da-muted italic">Scorers not recorded</li>`;
-
-  const oppList = oppScorers.length
-    ? oppScorers.map(s => `<li>${s.name || s} ${s.minute ? `<span class="text-da-muted">${s.minute}</span>` : ""}</li>`).join("")
-    : `<li class="text-da-muted italic">${homeScore < awayScore || awayScore > 0 ? "Scorers not recorded" : "No goals"}</li>`;
+  const oppList = m.opp_scorers.length
+    ? m.opp_scorers.map(s => `<li>${s.name} <span class="text-da-muted">${s.minute}</span></li>`).join("")
+    : `<li class="text-da-muted italic">No goals</li>`;
 
   return `
     <div class="match-card bg-da-card border border-da-border rounded-2xl overflow-hidden">
@@ -172,17 +312,16 @@ function renderMatchCard(m) {
             <p class="text-xs mt-1.5 font-medium">DA United</p>
           </div>
           <div class="text-center px-3">
+            <div class="flex items-center gap-2 justify-center mb-1">${resultPill}</div>
             <div class="text-2xl font-bold tracking-tight ${scoreClass}">${homeScore} – ${awayScore}</div>
-            <div class="text-[10px] font-bold ${resultClass} mt-0.5">${result}</div>
           </div>
           <div class="text-center">
-            <div class="w-12 h-12 rounded-full bg-da-border flex items-center justify-center text-sm font-bold text-da-muted">${opponentInitials(opponent)}</div>
-            <p class="text-xs mt-1.5 font-medium">${opponent}</p>
+            <div class="w-12 h-12 rounded-full bg-da-border flex items-center justify-center text-sm font-bold text-da-muted">${opponentInitials(m.opponent)}</div>
+            <p class="text-xs mt-1.5 font-medium">${m.opponent}</p>
           </div>
         </div>
         <div class="text-right text-sm text-da-muted">
-          <div>${venueLabel} · ${competition}</div>
-          ${m.date ? `<div class="text-xs mt-0.5">${m.date}${m.time ? " · " + m.time : ""}</div>` : ""}
+          <div>${isHome ? "Home" : "Away"} · ${m.competition}</div>
         </div>
       </div>
       <div class="border-t border-da-border px-5 py-4 bg-black/20">
@@ -193,7 +332,7 @@ function renderMatchCard(m) {
             <ul class="space-y-1 text-gray-300">${daList}</ul>
           </div>
           <div>
-            <p class="text-red-400 font-medium mb-1.5">${opponent}</p>
+            <p class="text-red-400 font-medium mb-1.5">${m.opponent}</p>
             <ul class="space-y-1 text-gray-300">${oppList}</ul>
           </div>
         </div>
@@ -202,185 +341,82 @@ function renderMatchCard(m) {
   `;
 }
 
-// ===================== LIVE MATCH BANNER =====================
-// Same live-state logic as the dashboard's Match Centre card:
-// WE ARE LIVE (red dot) -> latest event -> FULL TIME / INTERRUPTED / CANCELLED.
-function venueSideLabels(venue) {
-  const daIsHome = (venue || "Home") !== "Away";
-  return {
-    da: daIsHome ? "Home" : "Away",
-    opp: daIsHome ? "Away" : "Home"
-  };
+// One game = one key, so a legacy game that also gets typed into Admin
+// later only appears once.
+function matchKey(opponent, home, away, venue) {
+  const isHome = String(venue || "Home").toLowerCase() !== "away";
+  return `${String(opponent || "").trim().toLowerCase()}|${Number(home) || 0}-${Number(away) || 0}|${isHome ? "h" : "a"}`;
 }
 
-function eventLiveLine(e, venue) {
-  const labels = venueSideLabels(venue);
-  const sideLabel = e.side === "Opponent" ? labels.opp : labels.da;
-  const otherLabel = sideLabel === labels.da ? labels.opp : labels.da;
-  const player = e.player || "";
-  const min = e.minute ? `${e.minute}'` : "";
-  const pfx = player ? ` - ${player}` : "";
+function renderAllMatches(dbMatches) {
+  const listEl = document.getElementById("matches-list");
+  const emptyEl = document.getElementById("matches-empty");
+  if (!listEl) return;
 
-  switch (e.type) {
-    case "Goal": return { main: `GOAL${pfx}`, badge: `${sideLabel} scores`, min };
-    case "Golazo": return { main: `A STUNNING GOAL${pfx}`, badge: `${sideLabel} scores`, min };
-    case "Own Goal": return { main: `OWN GOAL${pfx}`, badge: `${otherLabel} scores`, min };
-    case "Free Kick Goal": return { main: `A STUNNING FREE KICK${pfx}`, badge: `${sideLabel} scores`, min };
-    case "Penalty Scored": return { main: `PENALTY SCORED${pfx}`, badge: `${sideLabel} scores`, min };
-    case "Penalty Missed": return { main: `PENALTY MISSED${pfx}`, badge: null, min };
-    case "Possible Penalty": return { main: "WHAT CAN THIS BE?", badge: null, min };
-    case "Possible Free Kick": return { main: "POSSIBLE FREE KICK", badge: null, min };
-    case "Yellow Card": return { main: `YELLOW CARD${pfx}`, badge: `${sideLabel} gets a booking`, min };
-    case "Red Card": return { main: `RED CARD${pfx}`, badge: `${sideLabel} down to 10 men`, min };
-    case "Substitution": return { main: `SUBSTITUTION${pfx}`, badge: null, min };
-    case "VAR Check": return { main: "WHAT CAN THIS BE?", badge: null, min };
-    case "Goal Disallowed": return { main: "VAR: GOAL DISALLOWED", badge: null, min };
-    case "Offside": return { main: `OFFSIDE${pfx}`, badge: null, min };
-    case "Injury": return { main: `INJURY${pfx}`, badge: null, min };
-    case "Custom": return { main: (e.detail || "UPDATE").toUpperCase(), badge: null, min };
-    case "Kick Off": return { main: "Game underway", badge: null, min: "" };
-    default: return { main: `${e.type}${pfx}`, badge: null, min };
-  }
-}
+  const seen = new Set();
+  const cards = [];
 
-function matchStateCopy(match) {
-  const status = match.status || "Scheduled";
-  if (status === "Scheduled") return null;
+  // Newest DB matches first
+  dbMatches.forEach(m => {
+    seen.add(matchKey(m.opponent, m.score_home, m.score_away, m.venue));
+    cards.push(renderMatchCard(m));
+  });
 
-  const events = match.events ? (typeof match.events === "string" ? JSON.parse(match.events) : match.events) : [];
-  const lastEvent = events.length ? events[events.length - 1] : null;
+  // Then the old manual games
+  LEGACY_MATCHES.forEach(m => {
+    const key = matchKey(m.opponent, m.score_home, m.score_away, m.venue);
+    if (seen.has(key)) return;
+    seen.add(key);
+    cards.push(renderLegacyMatchCard(m));
+  });
 
-  let headerLabel = "MATCH UPDATE";
-  let dotClass = "bg-da-muted";
-  let sub = { main: "", badge: null, min: "" };
-  let showX = false;
-
-  if (status === "Live") {
-    const hasRealEvent = lastEvent && lastEvent.type !== "Kick Off";
-    headerLabel = hasRealEvent ? "LIVE" : "WE ARE LIVE";
-    dotClass = "bg-red-500 animate-pulse";
-    sub = lastEvent ? eventLiveLine(lastEvent, match.venue) : { main: "Game underway", badge: null, min: "" };
-  } else if (status === "HT") {
-    headerLabel = "HALF TIME";
-    dotClass = "bg-yellow-400";
-    sub = { main: "Game is paused at the break", badge: null, min: "" };
-  } else if (status === "FT" || status === "AET" || status === "Penalties") {
-    headerLabel = "FULL TIME";
-    dotClass = "bg-da-muted";
-    sub = { main: "Game ended", badge: null, min: "" };
-  } else if (status === "Postponed") {
-    headerLabel = "INTERRUPTED";
-    dotClass = "bg-yellow-400";
-    sub = { main: "Game is paused", badge: null, min: "" };
-  } else if (status === "Cancelled") {
-    headerLabel = "CANCELLED";
-    dotClass = "bg-red-500";
-    sub = { main: "Game cancelled", badge: null, min: "" };
-    showX = true;
-  }
-
-  return { headerLabel, dotClass, sub, showX, status };
-}
-
-function renderLiveBanner(match, state) {
-  const opponent = match.opponent || "Opponent";
-  const scoreHome = match.score_home ?? 0;
-  const scoreAway = match.score_away ?? 0;
-  const headerColorClass = state.status === "Cancelled" ? "text-red-400" : "text-white";
-
-  return `
-    <a href="live.html" class="block bg-da-card border ${state.status === "Live" ? "border-da-green/40 hover:border-da-green" : "border-da-border"} rounded-2xl p-5 transition-colors">
-      <div class="flex items-center justify-between mb-1">
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full ${state.dotClass}"></span>
-          <span class="text-[11px] font-semibold tracking-wider uppercase ${headerColorClass}">${state.headerLabel}</span>
-        </div>
-        ${state.showX ? `<span class="text-red-400 text-lg font-bold">✕</span>` : ""}
-      </div>
-      <div class="mb-3">
-        <span class="text-sm font-semibold">${state.sub.main}</span>
-        ${state.sub.badge ? `<span class="ml-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-da-green/15 text-da-green">${state.sub.badge}</span>` : ""}
-        ${state.sub.min ? `<span class="ml-2 text-xs text-da-muted">${state.sub.min}</span>` : ""}
-      </div>
-      <div class="flex items-center justify-between gap-3">
-        <div class="flex flex-col items-center gap-1 min-w-0">
-          <div class="w-10 h-10 rounded-lg bg-white flex items-center justify-center overflow-hidden flex-shrink-0">
-            <img src="assets/crest.png" alt="DA" class="w-full h-full object-contain" onerror="this.parentElement.innerHTML='<span class=\\'text-xs font-black text-black\\'>DA</span>'">
-          </div>
-          <span class="text-xs font-medium truncate">DA United</span>
-          <span class="text-xl font-bold">${scoreHome}</span>
-        </div>
-        <div class="text-da-muted text-sm font-semibold px-2">vs</div>
-        <div class="flex flex-col items-center gap-1 min-w-0">
-          <div class="w-10 h-10 rounded-full bg-da-border flex items-center justify-center text-xs font-bold text-da-muted flex-shrink-0">${opponentInitials(opponent)}</div>
-          <span class="text-xs font-medium truncate text-center">${opponent}</span>
-          <span class="text-xl font-bold">${scoreAway}</span>
-        </div>
-      </div>
-      <p class="text-sm text-da-muted mt-3">Tap to watch on Live →</p>
-    </a>
-  `;
-}
-
-async function loadMatches() {
-  if (!window.supabaseClient) {
-    const listEl = document.getElementById("matches-list");
-    const emptyEl = document.getElementById("matches-empty");
-    if (listEl) {
-      emptyEl.classList.add("hidden");
-      listEl.innerHTML = PAST_MATCHES.map(renderMatchCard).join("");
-    }
+  if (cards.length === 0) {
+    if (emptyEl) emptyEl.classList.remove("hidden");
+    listEl.innerHTML = "";
     return;
   }
 
+  if (emptyEl) emptyEl.classList.add("hidden");
+  listEl.innerHTML = cards.join("");
+}
+
+async function loadMatches() {
   const listEl = document.getElementById("matches-list");
-  const emptyEl = document.getElementById("matches-empty");
   const liveEmpty = document.getElementById("live-empty");
   const liveMatch = document.getElementById("live-match");
+  if (!listEl) return;
+
+  // No Supabase yet? Still show the old games instead of "Loading matches..."
+  if (!window.supabaseClient) {
+    renderAllMatches([]);
+    return;
+  }
 
   try {
-    const { data: dbMatches, error } = await window.supabaseClient
+    const { data, error } = await window.supabaseClient
       .from("matches")
       .select("*")
       .order("created_at", { ascending: false });
 
     if (error) console.error("Matches load error", error);
 
-    const fromDb = dbMatches || [];
-    const all = [...fromDb, ...PAST_MATCHES];
+    const all = data || [];
+    renderAllMatches(all);
 
-    if (all.length === 0) {
-      emptyEl.classList.remove("hidden");
-      listEl.innerHTML = "";
-    } else {
-      emptyEl.classList.add("hidden");
-      listEl.innerHTML = all.map(renderMatchCard).join("");
-    }
-
-    // Live match banner — driven by the most recently touched match's
-    // status + latest event, not just a simple on/off flag.
-    const { data: mostRecent } = await window.supabaseClient
-      .from("matches")
-      .select("*")
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const state = mostRecent ? matchStateCopy(mostRecent) : null;
-
-    if (state) {
+    // Live status comes from the match's OWN status field.
+    const live = findLiveMatch(all);
+    if (live && liveMatch && liveEmpty) {
       liveEmpty.classList.add("hidden");
       liveMatch.classList.remove("hidden");
-      liveMatch.innerHTML = renderLiveBanner(mostRecent, state);
-    } else {
+      liveMatch.innerHTML = renderLiveBanner(live);
+    } else if (liveMatch && liveEmpty) {
       liveEmpty.classList.remove("hidden");
       liveMatch.classList.add("hidden");
       liveMatch.innerHTML = "";
     }
   } catch (e) {
     console.error("Matches error", e);
-    emptyEl.classList.add("hidden");
-    listEl.innerHTML = PAST_MATCHES.map(renderMatchCard).join("");
+    renderAllMatches([]);
   }
 }
 
@@ -392,12 +428,7 @@ function initMatches() {
       .on("postgres_changes", { event: "*", schema: "public", table: "matches" }, () => loadMatches())
       .subscribe();
   } else {
-    const listEl = document.getElementById("matches-list");
-    const emptyEl = document.getElementById("matches-empty");
-    if (listEl) {
-      emptyEl.classList.add("hidden");
-      listEl.innerHTML = PAST_MATCHES.map(renderMatchCard).join("");
-    }
+    renderAllMatches([]); // show old games immediately
     setTimeout(initMatches, 100);
   }
 }

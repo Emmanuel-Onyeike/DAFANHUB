@@ -1,65 +1,56 @@
 // ======================
-// DA United – Dashboard (Supabase + Sticky Notifications + Live Match Centre)
+// DA United – Dashboard (Supabase + Sticky Notifications + Update Gate)
 // ======================
+
+const APP_VERSION = "v2";
+
+// ===================== UPDATE GATE =====================
+// Pure black screen + centered modal, shown only when this visitor's
+// stored app version doesn't match APP_VERSION. Settings.js sets the
+// version flag once the update flow finishes, so this never shows
+// again after that.
+(function updateGate() {
+  const gate = document.getElementById("da-update-gate");
+  if (!gate) return;
+  const seen = localStorage.getItem("da_app_version");
+  if (seen !== APP_VERSION) {
+    gate.classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+  }
+})();
 
 // ----- VAPID Public Key -----
 const vapidPublicKey = 'BAl4qRWELwQHmC9P2RpigIUYaVom5hlwzaPDfoGwuyVzhFg6V7nFn5GHZ7IziUM-yPtCU1Vold-dNY3T3Oq1vqI';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, '+')
-    .replace(/_/g, '/');
-
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
   const rawData = window.atob(base64);
   const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
   return outputArray;
 }
 
-// ===== REGISTER SERVICE WORKER =====
-// This MUST run before subscribeUserToPush() is ever called, otherwise
-// navigator.serviceWorker.ready will hang forever with no error.
 let swRegistrationPromise = null;
-
 function registerServiceWorker() {
-  if (!('serviceWorker' in navigator)) {
-    console.warn('Service workers not supported in this browser');
-    return Promise.resolve(null);
-  }
-
+  if (!('serviceWorker' in navigator)) return Promise.resolve(null);
   if (!swRegistrationPromise) {
-    swRegistrationPromise = navigator.serviceWorker
-      .register('/sw.js')
-      .then((reg) => {
-        console.log('Service worker registered:', reg.scope);
-        return reg;
-      })
-      .catch((err) => {
-        console.error('Service worker registration failed:', err);
-        return null;
-      });
+    swRegistrationPromise = navigator.serviceWorker.register('/sw.js')
+      .then(reg => reg)
+      .catch(err => { console.error('Service worker registration failed:', err); return null; });
   }
-
   return swRegistrationPromise;
 }
-
-// Register immediately on script load
 registerServiceWorker();
 
 // ----- Date & Greeting -----
 function updateDateAndGreeting() {
   const dateEl = document.getElementById("current-date");
   const now = new Date();
-
   if (dateEl) {
     const options = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
     dateEl.textContent = now.toLocaleDateString("en-US", options).toUpperCase();
   }
-
   const hour = now.getHours();
   const greetingEl = document.querySelector("main h1");
   if (greetingEl) {
@@ -81,24 +72,21 @@ function openSidebar() {
   if (overlay) overlay.classList.remove("hidden");
   document.body.style.overflow = "hidden";
 }
-
 function closeSidebar() {
   if (sidebar) sidebar.classList.remove("open");
   if (overlay) overlay.classList.add("hidden");
   document.body.style.overflow = "";
 }
-
 if (btnOpen) btnOpen.addEventListener("click", openSidebar);
 if (btnClose) btnClose.addEventListener("click", closeSidebar);
 if (overlay) overlay.addEventListener("click", closeSidebar);
-
 document.querySelectorAll("#sidebar a").forEach(link => {
   link.addEventListener("click", () => {
     if (window.innerWidth < 1024) closeSidebar();
   });
 });
 
-// ===== STICKY NOTIFICATIONS (ask once → forever) =====
+// ===== STICKY NOTIFICATIONS =====
 const notificationModal = document.getElementById("notification-modal");
 const btnAllow = document.getElementById("btn-allow-notifications");
 const btnDeny = document.getElementById("btn-deny-notifications");
@@ -106,41 +94,21 @@ const btnDeny = document.getElementById("btn-deny-notifications");
 async function subscribeUserToPush() {
   try {
     const reg = await registerServiceWorker();
-    if (!reg) {
-      console.error("Cannot subscribe to push: service worker registration failed");
-      return;
-    }
-
+    if (!reg) return;
     const registration = await navigator.serviceWorker.ready;
-
     let subscription = await registration.pushManager.getSubscription();
-
     if (!subscription) {
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
       });
     }
-
     const sub = subscription.toJSON();
-
     if (window.supabaseClient) {
-      const { error } = await window.supabaseClient.from("push_subscriptions").upsert({
-        endpoint: sub.endpoint,
-        p256dh: sub.keys.p256dh,
-        auth: sub.keys.auth
+      await window.supabaseClient.from("push_subscriptions").upsert({
+        endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth
       }, { onConflict: "endpoint" });
-
-      if (error) {
-        console.error("Failed to save push subscription to Supabase:", error);
-        return;
-      }
-    } else {
-      console.error("Cannot save push subscription: window.supabaseClient not available");
-      return;
     }
-
-    console.log("Push subscription saved");
   } catch (err) {
     console.error("Push subscription error:", err);
   }
@@ -151,21 +119,17 @@ function showNotificationModal() {
     notificationModal.classList.remove("hidden");
   }
 }
-
 function hideNotificationModal() {
   if (notificationModal) {
     notificationModal.classList.add("hidden");
     localStorage.setItem("da_notifications_asked", "true");
   }
 }
-
 if (btnAllow) {
   btnAllow.addEventListener("click", async () => {
     hideNotificationModal();
-
     if ("Notification" in window) {
       const permission = await Notification.requestPermission();
-
       if (permission === "granted") {
         localStorage.setItem("da_notifications_enabled", "true");
         await subscribeUserToPush();
@@ -175,71 +139,53 @@ if (btnAllow) {
     }
   });
 }
-
 if (btnDeny) {
   btnDeny.addEventListener("click", () => {
     hideNotificationModal();
     localStorage.setItem("da_notifications_enabled", "false");
   });
 }
-
-// Show the modal only once (after a short delay)
 setTimeout(showNotificationModal, 1200);
-
-// If the user already granted permission previously, make sure we still
-// have a live subscription saved (covers reinstalled PWA / lost row).
 if ("Notification" in window && Notification.permission === "granted" &&
     localStorage.getItem("da_notifications_enabled") === "true") {
   subscribeUserToPush();
 }
 
-// ===== LOAD DATA FROM SUPABASE =====
+// ===================== SEASON RECORD =====================
+// BASELINE holds every result from before match-tracking moved into
+// Admin/Supabase (5 wins, 0 draws, 1 loss, 16 goals). Every match
+// Admin finishes from here on (status FT/AET/Penalties) is added on
+// top automatically — nothing needs to be re-typed by hand.
+const BASELINE_RECORD = { wins: 5, draws: 0, losses: 1, goals: 16 };
+const FINISHED_STATUSES = ["FT", "AET", "Penalties"];
 
-async function loadNextFixture() {
-  if (!window.supabaseClient) return;
-
-  const { data, error } = await window.supabaseClient
-    .from("fixtures")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error || !data) return;
-
-  const teamsEl = document.getElementById("fixture-teams");
-  const dateEl = document.getElementById("fixture-date");
-  const timeVenueEl = document.getElementById("fixture-time-venue-text");
-  const compEl = document.getElementById("fixture-competition");
-
-  if (teamsEl) {
-    teamsEl.innerHTML = `${data.home || "DA United"} <span class="opacity-60 font-semibold">vs</span> ${data.away || "Opponent"}`;
-  }
-  if (dateEl) dateEl.textContent = data.date || "Date TBA";
-  if (timeVenueEl) timeVenueEl.textContent = `${data.time || "Time TBA"} · ${data.venue || "Venue TBA"}`;
-  if (compEl) compEl.textContent = data.competition || "CLUB FRIENDLIES";
-}
-
+// Same identity used on the Matches/Fixtures pages, so a match
+// Admin logs that duplicates a legacy result isn't double counted.
+// (Baseline matches aren't individually listed here — this key list
+// only needs to grow if you want fine-grained de-dupe; for the
+// season-record card, simply not re-entering old games into Admin
+// keeps the math correct.)
 async function loadSeasonRecord() {
   if (!window.supabaseClient) return;
 
   const { data: matches } = await window.supabaseClient
     .from("matches")
-    .select("score_home, score_away");
+    .select("score_home, score_away, status")
+    .in("status", FINISHED_STATUSES);
 
-  let wins = 0, draws = 0, losses = 0, goals = 0;
+  let wins = BASELINE_RECORD.wins;
+  let draws = BASELINE_RECORD.draws;
+  let losses = BASELINE_RECORD.losses;
+  let goals = BASELINE_RECORD.goals;
 
-  if (matches) {
-    matches.forEach(m => {
-      const home = m.score_home || 0;
-      const away = m.score_away || 0;
-      goals += home;
-
-      if (home > away) wins++;
-      else if (home === away) draws++;
-      else losses++;
-    });
-  }
+  (matches || []).forEach(m => {
+    const home = m.score_home || 0;
+    const away = m.score_away || 0;
+    goals += home;
+    if (home > away) wins++;
+    else if (home === away) draws++;
+    else losses++;
+  });
 
   const winsEl = document.getElementById("record-wins");
   const drawsEl = document.getElementById("record-draws");
@@ -252,15 +198,28 @@ async function loadSeasonRecord() {
   if (goalsEl) goalsEl.textContent = `${goals} goals this season`;
 }
 
+// ===================== NEXT FIXTURE =====================
+async function loadNextFixture() {
+  if (!window.supabaseClient) return;
+  const { data, error } = await window.supabaseClient
+    .from("fixtures").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (error || !data) return;
+
+  const teamsEl = document.getElementById("fixture-teams");
+  const dateEl = document.getElementById("fixture-date");
+  const timeVenueEl = document.getElementById("fixture-time-venue-text");
+  const compEl = document.getElementById("fixture-competition");
+
+  if (teamsEl) teamsEl.innerHTML = `${data.home || "DA United"} <span class="opacity-60 font-semibold">vs</span> ${data.away || "Opponent"}`;
+  if (dateEl) dateEl.textContent = data.date || "Date TBA";
+  if (timeVenueEl) timeVenueEl.textContent = `${data.time || "Time TBA"} · ${data.venue || "Venue TBA"}`;
+  if (compEl) compEl.textContent = data.competition || "CLUB FRIENDLIES";
+}
+
 async function loadLatestStories() {
   if (!window.supabaseClient) return;
-
   const { data: stories } = await window.supabaseClient
-    .from("stories")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(3);
-
+    .from("stories").select("*").order("created_at", { ascending: false }).limit(3);
   const grid = document.getElementById("stories-grid");
   if (!grid) return;
 
@@ -272,99 +231,40 @@ async function loadLatestStories() {
   grid.innerHTML = stories.map(s => `
     <article class="group cursor-pointer">
       <div class="aspect-[4/3] rounded-xl bg-da-card border border-da-border overflow-hidden mb-3 relative">
-        ${s.image 
-          ? `<img src="${s.image}" alt="" class="w-full h-full object-cover">` 
-          : `<div class="absolute inset-0 flex items-center justify-center text-da-muted text-sm">No image</div>`}
+        ${s.image ? `<img src="${s.image}" alt="" class="w-full h-full object-cover">` : `<div class="absolute inset-0 flex items-center justify-center text-da-muted text-sm">No image</div>`}
       </div>
       <span class="text-[10px] font-semibold tracking-wider text-da-green uppercase">${s.category || "Club"}</span>
-      <h4 class="text-sm font-medium mt-1 group-hover:text-da-green transition-colors line-clamp-2">
-        ${s.title || "Untitled"}
-      </h4>
+      <h4 class="text-sm font-medium mt-1 group-hover:text-da-green transition-colors line-clamp-2">${s.title || "Untitled"}</h4>
     </article>
   `).join("");
 }
 
-// ===================== LIVE MATCH CENTRE =====================
-// Reads the most recently touched match and renders the live-state banner:
-// WE ARE LIVE (red dot) -> latest event -> FULL TIME / INTERRUPTED / CANCELLED.
-// The banner stays on "WE ARE LIVE" no matter how many events get logged —
-// it only changes when the admin sets Match Status to something else and saves.
+// ===================== MATCH CENTRE =====================
+// The status pill (LIVE / HALF TIME / FULL TIME / POSTPONED /
+// CANCELLED) reflects ONLY the match's status field. A logged Goal,
+// Penalty, Free Kick etc. is shown underneath as its own line — it
+// never flips the header to "LIVE" by itself, and it never changes
+// what the header says.
+const LIVE_STATUSES = ["Live", "HT"];
 
-function venueSideLabels(venue) {
-  const daIsHome = (venue || "Home") !== "Away";
-  return {
-    da: daIsHome ? "Home" : "Away",
-    opp: daIsHome ? "Away" : "Home"
-  };
-}
+const EVENT_LABEL = {
+  "Goal": "Goal", "Own Goal": "Own Goal", "Golazo": "Screamer",
+  "Free Kick Goal": "Free Kick Goal", "Penalty Scored": "Penalty Scored",
+  "Penalty Missed": "Penalty Missed", "Yellow Card": "Yellow Card",
+  "Red Card": "Red Card", "Substitution": "Substitution",
+  "VAR Check": "VAR Check", "Offside": "Offside", "Injury": "Injury",
+  "Assist": "Assist", "Kick Off": "Kick Off", "Custom": "Update"
+};
 
-function eventLiveLine(e, venue) {
-  const labels = venueSideLabels(venue);
-  const sideLabel = e.side === "Opponent" ? labels.opp : labels.da;
-  const otherLabel = sideLabel === labels.da ? labels.opp : labels.da;
-  const player = e.player || "";
-  const min = e.minute ? `${e.minute}'` : "";
-  const pfx = player ? ` - ${player}` : "";
-
-  switch (e.type) {
-    case "Goal": return { main: `GOAL${pfx}`, badge: `${sideLabel} scores`, min };
-    case "Golazo": return { main: `A STUNNING GOAL${pfx}`, badge: `${sideLabel} scores`, min };
-    case "Own Goal": return { main: `OWN GOAL${pfx}`, badge: `${otherLabel} scores`, min };
-    case "Free Kick Goal": return { main: `A STUNNING FREE KICK${pfx}`, badge: `${sideLabel} scores`, min };
-    case "Penalty Scored": return { main: `PENALTY SCORED${pfx}`, badge: `${sideLabel} scores`, min };
-    case "Penalty Missed": return { main: `PENALTY MISSED${pfx}`, badge: null, min };
-    case "Possible Penalty": return { main: "WHAT CAN THIS BE?", badge: null, min };
-    case "Possible Free Kick": return { main: "POSSIBLE FREE KICK", badge: null, min };
-    case "Yellow Card": return { main: `YELLOW CARD${pfx}`, badge: `${sideLabel} gets a booking`, min };
-    case "Red Card": return { main: `RED CARD${pfx}`, badge: `${sideLabel} down to 10 men`, min };
-    case "Substitution": return { main: `SUBSTITUTION${pfx}`, badge: null, min };
-    case "VAR Check": return { main: "WHAT CAN THIS BE?", badge: null, min };
-    case "Goal Disallowed": return { main: "VAR: GOAL DISALLOWED", badge: null, min };
-    case "Offside": return { main: `OFFSIDE${pfx}`, badge: null, min };
-    case "Injury": return { main: `INJURY${pfx}`, badge: null, min };
-    case "Custom": return { main: (e.detail || "UPDATE").toUpperCase(), badge: null, min };
-    case "Kick Off": return { main: "Game underway", badge: null, min: "" };
-    default: return { main: `${e.type}${pfx}`, badge: null, min };
+function statusHeader(status) {
+  switch (status) {
+    case "Live": return { label: "LIVE", dot: "bg-red-500 animate-pulse" };
+    case "HT": return { label: "HALF TIME", dot: "bg-yellow-400" };
+    case "FT": case "AET": case "Penalties": return { label: "FULL TIME", dot: "bg-da-muted" };
+    case "Postponed": return { label: "POSTPONED", dot: "bg-yellow-400" };
+    case "Cancelled": return { label: "CANCELLED", dot: "bg-red-500" };
+    case "Scheduled": default: return { label: "SCHEDULED", dot: "bg-da-muted" };
   }
-}
-
-function matchStateCopy(match) {
-  const status = match.status || "Scheduled";
-  if (status === "Scheduled") return null;
-
-  const events = match.events ? (typeof match.events === "string" ? JSON.parse(match.events) : match.events) : [];
-  const lastEvent = events.length ? events[events.length - 1] : null;
-
-  let headerLabel = "MATCH UPDATE";
-  let dotClass = "bg-da-muted";
-  let sub = { main: "", badge: null, min: "" };
-  let showX = false;
-
-  if (status === "Live") {
-    const hasRealEvent = lastEvent && lastEvent.type !== "Kick Off";
-    headerLabel = hasRealEvent ? "LIVE" : "WE ARE LIVE";
-    dotClass = "bg-red-500 animate-pulse";
-    sub = lastEvent ? eventLiveLine(lastEvent, match.venue) : { main: "Game underway", badge: null, min: "" };
-  } else if (status === "HT") {
-    headerLabel = "HALF TIME";
-    dotClass = "bg-yellow-400";
-    sub = { main: "Game is paused at the break", badge: null, min: "" };
-  } else if (status === "FT" || status === "AET" || status === "Penalties") {
-    headerLabel = "FULL TIME";
-    dotClass = "bg-da-muted";
-    sub = { main: "Game ended", badge: null, min: "" };
-  } else if (status === "Postponed") {
-    headerLabel = "INTERRUPTED";
-    dotClass = "bg-yellow-400";
-    sub = { main: "Game is paused", badge: null, min: "" };
-  } else if (status === "Cancelled") {
-    headerLabel = "CANCELLED";
-    dotClass = "bg-red-500";
-    sub = { main: "Game cancelled", badge: null, min: "" };
-    showX = true;
-  }
-
-  return { headerLabel, dotClass, sub, showX, status };
 }
 
 function renderNoLiveMatch(card) {
@@ -397,38 +297,33 @@ async function loadMatchCentre() {
   if (!card) return;
 
   const { data } = await window.supabaseClient
-    .from("matches")
-    .select("*")
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .from("matches").select("*").order("updated_at", { ascending: false }).limit(1).maybeSingle();
 
-  const state = data ? matchStateCopy(data) : null;
-
-  if (!state) {
+  if (!data || data.status === "Scheduled") {
     renderNoLiveMatch(card);
     return;
   }
 
+  const header = statusHeader(data.status);
   const opponent = data.opponent || "Opponent";
   const scoreHome = data.score_home ?? 0;
   const scoreAway = data.score_away ?? 0;
-  const headerColorClass = state.status === "Cancelled" ? "text-red-400" : "text-white";
+
+  const events = data.events ? (typeof data.events === "string" ? JSON.parse(data.events) : data.events) : [];
+  const lastEvent = events.length ? events[events.length - 1] : null;
+  const eventLine = lastEvent
+    ? `<div class="text-xs text-da-muted mt-1">${lastEvent.player ? lastEvent.player + " — " : ""}${EVENT_LABEL[lastEvent.type] || lastEvent.type}${lastEvent.minute ? ` (${lastEvent.minute}')` : ""}</div>`
+    : "";
 
   card.innerHTML = `
     <div class="flex items-center justify-between mb-1">
       <div class="flex items-center gap-2">
-        <span class="w-2 h-2 rounded-full ${state.dotClass}"></span>
-        <span class="text-[11px] font-semibold tracking-wider uppercase ${headerColorClass}">${state.headerLabel}</span>
+        <span class="w-2 h-2 rounded-full ${header.dot}"></span>
+        <span class="text-[11px] font-semibold tracking-wider uppercase ${data.status === "Cancelled" ? "text-red-400" : "text-white"}">${header.label}</span>
       </div>
-      ${state.showX ? `<span class="text-red-400 text-lg font-bold">✕</span>` : ""}
     </div>
-    <div class="mb-4">
-      <span class="text-sm font-semibold">${state.sub.main}</span>
-      ${state.sub.badge ? `<span class="ml-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-da-green/15 text-da-green">${state.sub.badge}</span>` : ""}
-      ${state.sub.min ? `<span class="ml-2 text-xs text-da-muted">${state.sub.min}</span>` : ""}
-    </div>
-    <div class="flex items-center justify-between gap-3">
+    ${eventLine}
+    <div class="flex items-center justify-between gap-3 mt-3">
       <div class="flex flex-col items-center gap-1.5 min-w-0">
         <div class="w-9 h-9 rounded-lg bg-white flex items-center justify-center overflow-hidden flex-shrink-0">
           <img src="assets/crest.png" alt="DA" class="w-full h-full object-contain" onerror="this.parentElement.innerHTML='<span class=\\'text-[9px] font-black text-black\\'>DA</span>'">
@@ -464,6 +359,15 @@ function initDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stories' }, () => loadLatestStories())
       .subscribe();
   } else {
+    // Still show the correct season record even before Supabase connects
+    const winsEl = document.getElementById("record-wins");
+    const drawsEl = document.getElementById("record-draws");
+    const lossesEl = document.getElementById("record-losses");
+    const goalsEl = document.getElementById("record-goals");
+    if (winsEl) winsEl.textContent = BASELINE_RECORD.wins;
+    if (drawsEl) drawsEl.textContent = BASELINE_RECORD.draws;
+    if (lossesEl) lossesEl.textContent = BASELINE_RECORD.losses;
+    if (goalsEl) goalsEl.textContent = `${BASELINE_RECORD.goals} goals this season`;
     setTimeout(initDashboard, 100);
   }
 }
