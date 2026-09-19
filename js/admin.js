@@ -135,26 +135,117 @@ function renderEventsPreview() {
   `).join("");
 
   box.querySelectorAll(".remove-event").forEach(btn => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
+      const removed = currentEvents[Number(btn.dataset.idx)];
       currentEvents.splice(Number(btn.dataset.idx), 1);
       renderEventsPreview();
+
+      // Undo the score bump this event caused, then push the correction live.
+      if (removed) {
+        const homeInput = document.getElementById("match-score-home");
+        const awayInput = document.getElementById("match-score-away");
+        if (removed.type === "Goal" && homeInput) {
+          homeInput.value = Math.max(0, (parseInt(homeInput.value) || 0) - 1);
+        }
+        if (removed.type === "Own Goal" && awayInput) {
+          awayInput.value = Math.max(0, (parseInt(awayInput.value) || 0) - 1);
+        }
+      }
+      await persistLiveEvent(null);
     });
   });
 }
 
-document.getElementById("btn-add-event")?.addEventListener("click", () => {
+// Event types that move the score. "Goal" is one of our players scoring
+// (the player picker only lists the squad), "Own Goal" benefits the
+// opponent. Anything else (cards, subs, VAR, etc.) just gets logged.
+const SCORING_EVENT_TYPES = { "Goal": "home", "Own Goal": "away" };
+
+// Writes the in-memory event list + score straight to Supabase so it
+// shows up on the public site immediately — logging an event no longer
+// silently waits for a later, unrelated "Save Match" click.
+async function persistLiveEvent(justAdded) {
+  const id = document.getElementById("match-edit-id").value;
+  if (!id || !window.supabaseClient) return;
+
+  const scoreHome = parseInt(document.getElementById("match-score-home").value) || 0;
+  const scoreAway = parseInt(document.getElementById("match-score-away").value) || 0;
+  const opponent = document.getElementById("match-opponent").value;
+  const status = document.getElementById("match-status").value || "Live";
+
+  const { error } = await window.supabaseClient.from("matches").update({
+    events: currentEvents,
+    score_home: scoreHome,
+    score_away: scoreAway,
+    scorers: currentEvents
+      .filter(e => e.type === "Goal" || e.type === "Own Goal")
+      .map(e => `${e.player} ${e.minute}`)
+      .join("\n")
+  }).eq("id", id);
+
+  if (error) {
+    console.error(error);
+    alert("Error logging event: " + error.message);
+    return;
+  }
+
+  const isLive = ["Live", "HT"].includes(status);
+  const isGoal = justAdded && (justAdded.type === "Goal" || justAdded.type === "Own Goal");
+
+  if (isLive && isGoal) {
+    showToast("⚽ Goal logged live");
+    await sendPushNotification(
+      "⚽ GOAL!",
+      `DA United ${scoreHome} - ${scoreAway} ${opponent || ""}${justAdded.player ? " — " + justAdded.player : ""}`,
+      "/matches.html"
+    );
+  } else if (isLive && justAdded) {
+    showToast(`${justAdded.type} logged live`);
+    await sendPushNotification(
+      "Match Update",
+      `${justAdded.type}${justAdded.player ? " — " + justAdded.player : ""} · DA United ${scoreHome} - ${scoreAway} ${opponent || ""}`,
+      "/matches.html"
+    );
+  } else {
+    showToast("Event saved");
+  }
+
+  loadMatches();
+}
+
+document.getElementById("btn-add-event")?.addEventListener("click", async () => {
+  const id = document.getElementById("match-edit-id").value;
+  if (!id) {
+    alert("Save this match first (Save Match, with status set to Live), then the event log below will post live as you add events.");
+    return;
+  }
+
   const type = document.getElementById("event-type").value;
   const sel = document.getElementById("event-player");
   const customInput = document.getElementById("event-player-custom");
   const player = sel.value === "__custom__" ? customInput.value.trim() : sel.value.trim();
   const minute = document.getElementById("event-minute").value.trim();
 
-  currentEvents.push({ type, player, minute });
+  const newEvent = { type, player, minute };
+  currentEvents.push(newEvent);
   sel.value = "";
   customInput.value = "";
   customInput.classList.add("hidden");
   document.getElementById("event-minute").value = "";
   renderEventsPreview();
+
+  // Auto-bump the score for goal-type events, same as the score fields
+  // would show if you typed it in yourself.
+  const side = SCORING_EVENT_TYPES[type];
+  if (side === "home") {
+    const el = document.getElementById("match-score-home");
+    el.value = (parseInt(el.value) || 0) + 1;
+  } else if (side === "away") {
+    const el = document.getElementById("match-score-away");
+    el.value = (parseInt(el.value) || 0) + 1;
+  }
+
+  await persistLiveEvent(newEvent);
 });
 
 // ===================== FIXTURES =====================
@@ -325,7 +416,6 @@ async function loadMatches() {
       await window.supabaseClient.from("matches").delete().eq("id", btn.dataset.id);
       showToast("Match deleted");
       loadMatches();
-      recalcPlayerStats();
     });
   });
 }
@@ -356,10 +446,13 @@ async function saveMatch(forceFullTime) {
   };
 
   let error;
+  let savedId = id;
   if (id) {
     ({ error } = await window.supabaseClient.from("matches").update(data).eq("id", id));
   } else {
-    ({ error } = await window.supabaseClient.from("matches").insert([data]));
+    const { data: inserted, error: insErr } = await window.supabaseClient.from("matches").insert([data]).select();
+    error = insErr;
+    if (inserted && inserted[0]) savedId = inserted[0].id;
   }
 
   if (error) {
@@ -376,16 +469,29 @@ async function saveMatch(forceFullTime) {
     "/matches.html"
   );
 
-  // Once a match is finished: recompute every player's Goals/Assists/
-  // Saves/Clean Sheets from all Full Time matches, and clear the
-  // matching "upcoming" fixture so it doesn't need re-entering.
+  // Once a match is finished, just clear the matching "upcoming"
+  // fixture so it doesn't need re-entering. Player Goals/Assists/
+  // Saves/Clean Sheets are NOT auto-recomputed here anymore — that
+  // used to silently reset any number you typed by hand on the
+  // Squad tab back to 0 the next time ANY match was saved. Use the
+  // "Recalculate stats from matches" button in the Squad tab instead,
+  // whenever you actually want the auto-count.
   if (FINISHED_STATUSES.includes(status) && opponent) {
     await window.supabaseClient.from("fixtures").delete().ilike("away", `%${opponent}%`);
-    await recalcPlayerStats();
     loadFixtures();
   }
 
-  resetMatchForm();
+  if (FINISHED_STATUSES.includes(status)) {
+    resetMatchForm();
+  } else {
+    // Match is Scheduled/Live/HT — stay in edit mode on this exact
+    // row so "+ Add Event" below has a saved match id to attach to
+    // and can post events live right away, instead of only saving
+    // whenever this form happens to be submitted again.
+    document.getElementById("match-edit-id").value = savedId || "";
+    document.getElementById("match-form-title").textContent = "Edit Match";
+    document.getElementById("btn-cancel-match").classList.remove("hidden");
+  }
   loadMatches();
 }
 
@@ -410,11 +516,12 @@ function resetMatchForm() {
   document.getElementById("btn-cancel-match").classList.add("hidden");
 }
 
-// ===================== AUTO PLAYER STATS =====================
-// Scans every Full Time / AET / Penalties match's events and
-// rebuilds Goals, Assists, Saves and Clean Sheets for the whole
-// squad, matched by player name. This is what makes "log a goal in
-// a match" show up on the Squad page without touching it by hand.
+// ===================== RECALCULATE STATS (manual, opt-in) =====================
+// Scans every Full Time / AET / Penalties match's events and rebuilds
+// Goals, Assists, Saves and Clean Sheets for the whole squad, matched
+// by player name. Only runs when the admin clicks the button — it no
+// longer fires automatically, so it can never quietly overwrite a
+// number typed in by hand on the Squad tab.
 async function recalcPlayerStats() {
   if (!window.supabaseClient) return;
 
@@ -462,18 +569,31 @@ async function recalcPlayerStats() {
     }).eq("id", p.id);
   }));
 
+  showToast("Stats recalculated from matches");
   loadPlayers();
 }
+
+document.getElementById("btn-recalc-stats")?.addEventListener("click", () => {
+  if (confirm("This will overwrite every player's Goals, Assists, Saves and Clean Sheets with counts computed from logged match events. Any numbers you typed in by hand will be replaced. Continue?")) {
+    recalcPlayerStats();
+  }
+});
 
 // ===================== PLAYERS =====================
 async function loadPlayers() {
   const list = document.getElementById("players-list");
   if (!list || !window.supabaseClient) return;
 
-  const { data } = await window.supabaseClient
+  const { data, error } = await window.supabaseClient
     .from("players")
     .select("*")
     .order("name", { ascending: true });
+
+  if (error) {
+    console.error("Squad load error", error);
+    list.innerHTML = `<p class="text-red-400 text-sm">Couldn't load players: ${error.message || "unknown error"}</p>`;
+    return;
+  }
 
   if (!data || data.length === 0) {
     list.innerHTML = `<p class="text-da-muted text-sm">No players yet.</p>`;
@@ -572,7 +692,7 @@ document.getElementById("btn-save-player")?.addEventListener("click", async () =
 
   if (error) {
     console.error(error);
-    alert("Error saving player");
+    alert("Error saving player: " + (error.message || error.details || JSON.stringify(error)));
   } else {
     showToast(id ? "Player updated" : "Player added");
     resetPlayerForm();
@@ -1245,16 +1365,6 @@ async function loadRatingsAdmin() {
   });
 }
 
-// Hook into the existing loader
-const _originalLoadAll = typeof loadAllLists === "function" ? loadAllLists : null;
-
-loadAllLists = function () {
-  if (_originalLoadAll) _originalLoadAll();
-  loadFormationAdmin();
-  loadAttributesAdmin();
-  loadRatingSelects();
-  loadRatingsAdmin();
-};
 // ===================== INIT =====================
 function loadAllLists() {
   if (!window.supabaseClient) {
@@ -1270,6 +1380,10 @@ function loadAllLists() {
   loadDatv();
   loadSquadIntoEventPicker();
   renderEventsPreview();
+  loadFormationAdmin();
+  loadAttributesAdmin();
+  loadRatingSelects();
+  loadRatingsAdmin();
 }
 
 if (sessionStorage.getItem("da_admin_logged_in") === "true") {
