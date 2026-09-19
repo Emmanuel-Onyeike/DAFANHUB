@@ -429,6 +429,21 @@ async function saveMatch(forceFullTime) {
   const opponent = document.getElementById("match-opponent").value;
   const status = forceFullTime ? "FT" : (document.getElementById("match-status").value || "FT");
 
+  // Look up what the match's status was BEFORE this save, so the push
+  // notification only fires on a real transition (e.g. into Live, or
+  // into Full Time) — not every time this form happens to be re-saved
+  // while the match is already Live, which used to re-announce "Kick
+  // Off" over and over and bury whatever goal/event push came before it.
+  let previousStatus = null;
+  if (id && window.supabaseClient) {
+    const { data: existing } = await window.supabaseClient
+      .from("matches")
+      .select("status")
+      .eq("id", id)
+      .maybeSingle();
+    previousStatus = existing?.status || null;
+  }
+
   const data = {
     opponent,
     score_home: scoreHome,
@@ -463,11 +478,17 @@ async function saveMatch(forceFullTime) {
 
   showToast(id ? "Match updated" : "Match saved");
 
-  await sendPushNotification(
-    status === "FT" ? "Full Time" : status === "Live" ? "Kick Off" : "Match Update",
-    `DA United ${scoreHome} - ${scoreAway} ${opponent || ""}`,
-    "/matches.html"
-  );
+  // Only push a status-change notification when the status actually
+  // changed (or this is a brand-new match). Re-saving an already-Live
+  // match — e.g. after logging an event — no longer re-fires "Kick Off".
+  const statusChanged = !id || previousStatus !== status;
+  if (statusChanged) {
+    await sendPushNotification(
+      status === "FT" ? "Full Time" : status === "Live" ? "Kick Off" : "Match Update",
+      `DA United ${scoreHome} - ${scoreAway} ${opponent || ""}`,
+      "/matches.html"
+    );
+  }
 
   // Once a match is finished, just clear the matching "upcoming"
   // fixture so it doesn't need re-entering. Player Goals/Assists/
